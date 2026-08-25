@@ -6,7 +6,7 @@ import re
 from datetime import datetime, time
 
 from canvas_calendar.canvas.client import CanvasClient
-from canvas_calendar.config import load_canvas_credentials
+from canvas_calendar.config import load_canvas_credentials, load_sync_options
 from canvas_calendar.models import Assignment, CourseRef, Source
 from canvas_calendar.modules import extract_dates, parse_subheader_date
 from canvas_calendar.rules import Disposition, classify
@@ -136,6 +136,7 @@ def collect() -> list[Assignment]:
     """Full read path against live Canvas. Used by `canvas-calendar preview`."""
     base_url, token = load_canvas_credentials()
     client = CanvasClient(base_url, token)
+    exclude = set(load_sync_options()["exclude_assignment_ids"])
     results: list[Assignment] = []
 
     for course in term_courses(client.list_courses()):
@@ -147,7 +148,7 @@ def collect() -> list[Assignment]:
         items = resolve_undated(items, titles, TERM_YEAR) + events
 
         for a in items:
-            verdict = classify(a)
+            verdict = classify(a, exclude=exclude)
             if verdict is Disposition.SKIP:
                 continue
             a.digest_only = verdict is Disposition.DIGEST

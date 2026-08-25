@@ -38,7 +38,11 @@ def _hash(a: Assignment) -> str:
 
 
 def diff(
-    assignments: list[Assignment], store: StateStore, *, prune: bool = True
+    assignments: list[Assignment],
+    store: StateStore,
+    *,
+    prune: bool = True,
+    force: bool = False,
 ) -> list[PlanEntry]:
     """Compare desired state against stored state.
 
@@ -46,6 +50,11 @@ def diff(
     what makes a Canvas-backfilled due date register as an UPDATE to the same
     UID rather than appearing as a second, duplicate event beside the extracted
     one.
+
+    `force` rewrites every event even when nothing tracked has changed. Needed
+    when a property outside the comparison key changes -- reminder timings, say,
+    or the subject format -- since those would otherwise register as NOOP and
+    never reach the calendar.
 
     `prune` controls whether state rows absent from `assignments` are emitted as
     DELETEs. It MUST be False whenever `assignments` is a filtered subset -- a
@@ -67,7 +76,7 @@ def diff(
 
         if prior is None:
             action = Action.CREATE
-        elif (prior.due_at, prior.title_hash, prior.source) == (
+        elif not force and (prior.due_at, prior.title_hash, prior.source) == (
             due_key,
             title_hash,
             a.source.value,

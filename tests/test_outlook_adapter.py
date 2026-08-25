@@ -1,3 +1,4 @@
+import json
 from datetime import datetime
 
 import httpx
@@ -163,3 +164,41 @@ def test_401_surfaces_clearly():
 
     with pytest.raises(httpx.HTTPStatusError):
         _adapter(handler).ensure_calendar("X")
+
+
+def _capture(handler_body):
+    seen = {}
+
+    def handler(request):
+        if request.method == "GET":
+            return httpx.Response(200, json={"value": []})
+        seen["body"] = json.loads(request.read().decode())
+        return httpx.Response(201, json={"id": "ev-1"})
+
+    return seen, handler
+
+
+def test_timed_event_gets_short_reminder():
+    seen, handler = _capture(None)
+    _adapter(handler).upsert("cal-1", "cc-1", _a())
+    assert seen["body"]["isReminderOn"] is True
+    assert seen["body"]["reminderMinutesBeforeStart"] == 15
+
+
+def test_all_day_event_gets_a_days_warning():
+    """15 minutes before midnight is not a useful prompt for an end-of-day
+    deadline, so all-day banners get a full day instead."""
+    seen, handler = _capture(None)
+    _adapter(handler).upsert("cal-1", "cc-2", _a(when="2026-09-01T04:59:59Z", cid=2))
+    assert seen["body"]["reminderMinutesBeforeStart"] == 1440
+
+
+def test_reminder_timings_are_configurable():
+    seen, handler = _capture(None)
+    OutlookAdapter(
+        auth=FakeAuth(),
+        http=httpx.Client(transport=httpx.MockTransport(handler)),
+        reminder_timed=45,
+        reminder_all_day=120,
+    ).upsert("cal-1", "cc-1", _a())
+    assert seen["body"]["reminderMinutesBeforeStart"] == 45

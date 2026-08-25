@@ -49,11 +49,11 @@ def render_plan(plan) -> str:
     return "\n".join(lines) or "nothing to do"
 
 
-def _sync(live: bool, course: str | None = None) -> int:
+def _sync(live: bool, course: str | None = None, force: bool = False) -> int:
     from canvas_calendar.apply import apply_plan
     from canvas_calendar.calendars.graph_auth import GraphAuth
     from canvas_calendar.calendars.outlook import OutlookAdapter
-    from canvas_calendar.config import load_graph_client_id
+    from canvas_calendar.config import load_graph_client_id, load_sync_options
     from canvas_calendar.diff import diff
     from canvas_calendar.pipeline import collect
     from canvas_calendar.state import DEFAULT_STATE_PATH, StateStore
@@ -67,11 +67,16 @@ def _sync(live: bool, course: str | None = None) -> int:
     store = StateStore(DEFAULT_STATE_PATH)
     # A filtered run must never prune: the courses we did not fetch are not
     # gone, and pruning on a subset would delete all of their events.
-    plan = diff(assignments, store, prune=course is None)
+    plan = diff(assignments, store, prune=course is None, force=force)
     print(render_plan(plan))
 
     auth = GraphAuth(client_id=load_graph_client_id())
-    adapter = OutlookAdapter(auth=auth)
+    opts = load_sync_options()
+    adapter = OutlookAdapter(
+        auth=auth,
+        reminder_timed=opts["reminder_minutes_timed"],
+        reminder_all_day=opts["reminder_minutes_all_day"],
+    )
     calendar_id = adapter.ensure_calendar("UIUC Assignments")
 
     errors: list[str] = []
@@ -96,6 +101,11 @@ def main() -> int:
         default=None,
         help="limit the sync to courses whose name contains this string",
     )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="rewrite every event even if unchanged (use after changing formatting or reminders)",
+    )
     args = parser.parse_args()
 
     if args.command == "preview":
@@ -103,4 +113,4 @@ def main() -> int:
 
         print(render_preview(collect()))
         return 0
-    return _sync(live=args.live, course=args.course)
+    return _sync(live=args.live, course=args.course, force=args.force)

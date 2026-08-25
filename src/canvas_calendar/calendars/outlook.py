@@ -31,9 +31,21 @@ UID_PROP = "String {b4a1e7c2-0d3f-4a58-9c6e-5f2d8a1b3c7e} Name canvasCalendarUid
 
 
 class OutlookAdapter:
-    def __init__(self, auth, http: httpx.Client | None = None) -> None:
+    def __init__(
+        self,
+        auth,
+        http: httpx.Client | None = None,
+        reminder_timed: int = 15,
+        reminder_all_day: int = 1440,
+    ) -> None:
         self._auth = auth
         self._http = http or httpx.Client(timeout=30)
+        # Graph exposes a single reminderMinutesBeforeStart per event -- there
+        # is no array, so one alert per event is the hard ceiling. Timed
+        # deadlines get a short nudge; all-day banners get a day's warning,
+        # since 15 minutes before midnight is not a useful prompt.
+        self._reminder_timed = reminder_timed
+        self._reminder_all_day = reminder_all_day
 
     def _headers(self) -> dict[str, str]:
         return {
@@ -85,6 +97,7 @@ class OutlookAdapter:
             "subject": subject[:250],
             "body": {"contentType": "text", "content": "\n".join(body_lines)},
             "singleValueExtendedProperties": [{"id": UID_PROP, "value": uid}],
+            "isReminderOn": True,
         }
 
         if is_end_of_day(a.due_at):
@@ -92,6 +105,7 @@ class OutlookAdapter:
             payload.update(
                 {
                     "isAllDay": True,
+                    "reminderMinutesBeforeStart": self._reminder_all_day,
                     "start": {"dateTime": f"{day}T00:00:00", "timeZone": WINDOWS_TZ},
                     "end": {
                         "dateTime": f"{day + timedelta(days=1)}T00:00:00",
@@ -104,6 +118,7 @@ class OutlookAdapter:
             payload.update(
                 {
                     "isAllDay": False,
+                    "reminderMinutesBeforeStart": self._reminder_timed,
                     "start": {
                         "dateTime": local.strftime("%Y-%m-%dT%H:%M:%S"),
                         "timeZone": WINDOWS_TZ,

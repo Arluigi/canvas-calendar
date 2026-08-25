@@ -44,3 +44,19 @@ def load_graph_client_id() -> str:
     raise RuntimeError(
         f"no Graph client id -- set CANVAS_CALENDAR_CLIENT_ID or write {GRAPH_CONFIG}"
     )
+
+
+def load_sync_options() -> dict:
+    """Exclusions and reminder timings from the local config file."""
+    import json
+
+    defaults = {
+        "exclude_assignment_ids": [],
+        "reminder_minutes_timed": 15,
+        "reminder_minutes_all_day": 1440,
+    }
+    if GRAPH_CONFIG.exists():
+        defaults.update(
+            {k: v for k, v in json.loads(GRAPH_CONFIG.read_text()).items() if k in defaults}
+        )
+    return defaults

@@ -66,3 +66,10 @@ def test_extra_credit_match_is_case_and_space_insensitive():
 def test_exclude_wins_over_extra_credit():
     a = make("Extra Credit thing", points=0.0, canvas_id=42)
     assert classify(a, exclude={42}) is Disposition.SKIP
+
+
+def test_configured_exclusions_drop_admin_forms():
+    """The two FSHN administrative drop boxes, excluded by id from config."""
+    for cid in (1697990, 1698003):
+        assert classify(make("admin form", 0.0, canvas_id=cid),
+                        exclude={1697990, 1698003}) is Disposition.SKIP

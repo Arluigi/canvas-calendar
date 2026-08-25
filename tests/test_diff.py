@@ -131,3 +131,12 @@ def test_full_run_still_prunes(tmp_path):
     _commit(diff([_a(1), _a(2)], s), s)
     plan = diff([_a(1)], s, prune=True)
     assert [p.uid for p in plan if p.action is Action.DELETE] == ["cc-2"]
+
+
+def test_force_rewrites_unchanged_events(tmp_path):
+    """Reminder timings and subject format sit outside the comparison key, so
+    changing them would register as NOOP and never reach the calendar."""
+    s = StateStore(tmp_path / "s.db")
+    _commit(diff([_a(1)], s), s)
+    assert [p.action for p in diff([_a(1)], s)] == [Action.NOOP]
+    assert [p.action for p in diff([_a(1)], s, force=True)] == [Action.UPDATE]
