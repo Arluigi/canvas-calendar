@@ -90,7 +90,7 @@ def _sync(live: bool, course: str | None = None, force: bool = False) -> int:
 
 def main() -> int:
     parser = argparse.ArgumentParser(prog="canvas-calendar")
-    parser.add_argument("command", choices=["preview", "sync"])
+    parser.add_argument("command", choices=["preview", "sync", "meetings"])
     parser.add_argument(
         "--live",
         action="store_true",
@@ -108,6 +108,10 @@ def main() -> int:
     )
     args = parser.parse_args()
 
+    if args.command == "meetings":
+        from canvas_calendar.sync_meetings import sync_meetings
+
+        return sync_meetings(live=args.live)
     if args.command == "preview":
         from canvas_calendar.pipeline import collect
 

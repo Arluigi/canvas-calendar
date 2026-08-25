@@ -148,6 +148,107 @@ class OutlookAdapter:
                 content=json.dumps(payload),
             )
 
+    # -- recurring class meetings -----------------------------------------
+
+    def upsert_recurring(self, calendar_id: str, meeting) -> str | None:
+        """Create or refresh a weekly class-meeting series.
+
+        Graph has no EXDATE on create: holiday occurrences must be deleted
+        individually after the series exists. Doing it any other way puts a
+        lecture on Thanksgiving.
+        """
+        from canvas_calendar.meetings import (
+            excluded_dates,
+            first_occurrence,
+            graph_days,
+            parse_clock,
+        )
+
+        assert_ours(meeting.uid)
+        weekdays = meeting.meeting.weekdays()
+        start_clock = parse_clock(meeting.meeting.start)
+        end_clock = parse_clock(meeting.meeting.end)
+        if not weekdays or start_clock is None:
+            return None
+
+        begins = first_occurrence(weekdays, meeting.start_date)
+        if begins is None:
+            return None
+
+        payload = {
+            "subject": meeting.title,
+            "location": {"displayName": meeting.location},
+            "body": {
+                "contentType": "text",
+                "content": (
+                    f"{meeting.section}\n"
+                    f"Instructor: {meeting.meeting.instructor}\n"
+                    "Synced by canvas-calendar. Edits here will be overwritten."
+                ),
+            },
+            "isAllDay": False,
+            "isReminderOn": True,
+            "reminderMinutesBeforeStart": 15,
+            "showAs": "busy",
+            "singleValueExtendedProperties": [{"id": UID_PROP, "value": meeting.uid}],
+            "start": {
+                "dateTime": f"{begins}T{start_clock.isoformat()}",
+                "timeZone": WINDOWS_TZ,
+            },
+            "end": {
+                "dateTime": f"{begins}T{(end_clock or start_clock).isoformat()}",
+                "timeZone": WINDOWS_TZ,
+            },
+            "recurrence": {
+                "pattern": {
+                    "type": "weekly",
+                    "interval": 1,
+                    "daysOfWeek": graph_days(weekdays),
+                },
+                "range": {
+                    "type": "endDate",
+                    "startDate": str(begins),
+                    "endDate": str(meeting.end_date),
+                    "recurrenceTimeZone": WINDOWS_TZ,
+                },
+            },
+        }
+
+        existing = self._find_event_id(calendar_id, meeting.uid)
+        if existing:
+            self._request(
+                "DELETE", f"/me/calendars/{calendar_id}/events/{existing}"
+            )  # replace wholesale; patching a series is unreliable
+        event_id = self._request(
+            "POST", f"/me/calendars/{calendar_id}/events", content=json.dumps(payload)
+        ).json()["id"]
+
+        self._cancel_occurrences(event_id, excluded_dates(weekdays))
+        return event_id
+
+    def _cancel_occurrences(self, event_id: str, days: list) -> int:
+        """Delete individual occurrences on non-instruction days."""
+        cancelled = 0
+        for day in days:
+            r = self._http.get(
+                f"{GRAPH}/me/events/{event_id}/instances",
+                headers=self._headers(),
+                params={
+                    "startDateTime": f"{day}T00:00:00",
+                    "endDateTime": f"{day}T23:59:59",
+                    "$select": "id",
+                },
+            )
+            if r.status_code != 200:
+                continue
+            for inst in r.json().get("value", []):
+                d = self._http.delete(
+                    f"{GRAPH}/me/events/{inst['id']}", headers=self._headers()
+                )
+                if d.status_code in (200, 204):
+                    cancelled += 1
+        return cancelled
+
     def delete(self, calendar_id: str, uid: str) -> None:
         # Guard before any network call: never look up, let alone remove, an
         # event that is not ours.
