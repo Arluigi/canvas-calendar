@@ -59,9 +59,14 @@ class Assignment:
     source: Source = Source.CANVAS
     provenance: str = ""  # for extracted dates: the text the date came from
     module: str = ""
+    # Canvas has several independent ID spaces. Assignments use the default
+    # empty namespace; module items (SubHeader-derived events, e.g. MCB 320's
+    # exams) use "mi-". Without this, assignment 5440597 and module item
+    # 5440597 would produce the same UID and clobber each other.
+    namespace: str = ""
 
     @property
     def uid(self) -> str:
         """Stable calendar UID. The cc- prefix is what the never-delete-foreign-
         events check tests against, so it must never change."""
-        return f"cc-{self.canvas_id}"
+        return f"cc-{self.namespace}{self.canvas_id}"

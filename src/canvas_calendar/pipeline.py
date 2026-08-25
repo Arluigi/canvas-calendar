@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+import re
 from datetime import datetime, time
 
 from canvas_calendar.canvas.client import CanvasClient
 from canvas_calendar.config import load_canvas_credentials
 from canvas_calendar.models import Assignment, CourseRef, Source
-from canvas_calendar.modules import extract_dates
+from canvas_calendar.modules import extract_dates, parse_subheader_date
 from canvas_calendar.rules import Disposition, classify
 from canvas_calendar.timeutil import CHICAGO, parse_canvas_ts
 
@@ -16,6 +17,9 @@ from canvas_calendar.timeutil import CHICAGO, parse_canvas_ts
 _EXTRACTED_TIME = time(23, 59)
 
 TERM_YEAR = 2026
+
+# SubHeaders worth calendaring. A lecture topic is not a deadline.
+_ASSESSMENT = re.compile(r"exam|midterm|quiz|review for|final", re.IGNORECASE)
 
 
 def term_courses(courses: list[dict]) -> list[dict]:
@@ -73,13 +77,59 @@ def resolve_undated(
     return items
 
 
-def _module_title_by_assignment(client: CanvasClient, course_id: int) -> dict[int, str]:
+def subheader_events(items: list[dict], course: str, year: int) -> list[Assignment]:
+    """Build assessment events from dated SubHeader text.
+
+    Some courses expose no Canvas assignments at all. MCB 320 is the case that
+    forced this: zero assignments, no syllabus body, but its entire schedule --
+    including four exams -- is published as dated SubHeader text inside modules.
+    Reading only /assignments makes such a course silently contribute nothing.
+
+    Only assessments are calendared; a plain lecture topic is not a deadline.
+    """
+    out: list[Assignment] = []
+    for item in items:
+        if item.get("type") != "SubHeader":
+            continue
+        title = (item.get("title") or "").strip()
+        if not _ASSESSMENT.search(title):
+            continue
+        when = parse_subheader_date(title, year=year)
+        if when is None:
+            continue
+        out.append(
+            Assignment(
+                canvas_id=item["id"],
+                name=title,
+                points=0.0,
+                due_at=datetime.combine(when, _EXTRACTED_TIME, tzinfo=CHICAGO),
+                course=course,
+                source=Source.EXTRACTED,
+                provenance=f"module subheader: {title}",
+                namespace="mi-",
+            )
+        )
+    return out
+
+
+def _walk_modules(
+    client: CanvasClient, course_id: int, course: str
+) -> tuple[dict[int, str], list[Assignment]]:
+    """One pass over a course's modules, serving both extraction paths.
+
+    Returns (assignment_id -> containing module title, subheader events).
+    Walked unconditionally: a course with zero assignments still has a schedule
+    worth reading, which is exactly how MCB 320 was being missed.
+    """
     titles: dict[int, str] = {}
+    events: list[Assignment] = []
     for module in client.list_modules(course_id):
-        for entry in client.list_module_items(course_id, module["id"]):
+        entries = client.list_module_items(course_id, module["id"])
+        for entry in entries:
             if entry.get("type") == "Assignment" and entry.get("content_id"):
                 titles[entry["content_id"]] = module.get("name", "")
-    return titles
+        events.extend(subheader_events(entries, course=course, year=TERM_YEAR))
+    return titles, events
 
 
 def collect() -> list[Assignment]:
@@ -93,8 +143,8 @@ def collect() -> list[Assignment]:
         label = course.get("name", "") or course.get("course_code", "")
         items = build_assignments(client.list_assignments(cid), course=label)
 
-        if any(a.source is Source.UNRESOLVED for a in items):
-            items = resolve_undated(items, _module_title_by_assignment(client, cid), TERM_YEAR)
+        titles, events = _walk_modules(client, cid, label)
+        items = resolve_undated(items, titles, TERM_YEAR) + events
 
         results.extend(a for a in items if classify(a) is not Disposition.SKIP)
     return results
