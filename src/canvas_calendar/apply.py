@@ -29,9 +29,17 @@ def apply_plan(
     store: StateStore,
     *,
     dry_run: bool = True,
+    errors: list[str] | None = None,
 ) -> Counter:
-    """Execute a plan. Returns counts per action, plus an "error" tally."""
+    """Execute a plan. Returns counts per action, plus an "error" tally.
+
+    Pass `errors` to collect human-readable failure reasons for the digest. A
+    counted error with no explanation is a silent failure wearing a number, and
+    this project exists to eliminate those.
+    """
     counts: Counter = Counter()
+    if errors is None:
+        errors = []
 
     for entry in plan:
         counts[entry.action.value] += 1
@@ -58,11 +66,15 @@ def apply_plan(
                 assert_ours(entry.uid)
                 adapter.delete(calendar_id, entry.uid)
                 store.delete(entry.uid)
-        except ForeignEventError:
+        except ForeignEventError as exc:
             counts["error"] += 1
-        except Exception:
-            # Deliberately broad: a single failing event must not abort the
-            # run, and its state is left unadvanced so the next run retries.
+            errors.append(f"{entry.uid}: refused as not ours ({exc})")
+        except Exception as exc:  # noqa: BLE001 -- see below
+            # Deliberately broad. A single failing event must not abort the
+            # run, and its state is left unadvanced so the next run retries it.
+            # The reason is recorded rather than swallowed, so the digest can
+            # say what went wrong instead of only that something did.
             counts["error"] += 1
+            errors.append(f"{entry.uid}: {type(exc).__name__}: {exc}")
 
     return counts

@@ -126,3 +126,23 @@ def test_guard_is_enforced_even_if_adapter_forgets():
 
     with pytest.raises(ForeignEventError):
         assert_ours("outlook-native-id")
+
+
+def test_errors_are_explained_not_just_counted(tmp_path):
+    """A counted error with no reason is a silent failure wearing a number."""
+    s = StateStore(tmp_path / "s.db")
+    adapter = FakeAdapter(fail_on="cc-1")
+    errs: list[str] = []
+    counts = apply_plan(diff([_a(1)], s), adapter, "cal-1", s, dry_run=False, errors=errs)
+    assert counts["error"] == 1
+    assert len(errs) == 1
+    assert "cc-1" in errs[0]
+    assert "calendar write failed" in errs[0]
+
+
+def test_foreign_uid_error_explains_the_refusal(tmp_path):
+    s = StateStore(tmp_path / "s.db")
+    s.upsert("outlook-native-id", due_at="a", title_hash="h", source="canvas")
+    errs: list[str] = []
+    apply_plan(diff([], s), FakeAdapter(), "cal-1", s, dry_run=False, errors=errs)
+    assert "not ours" in errs[0]
