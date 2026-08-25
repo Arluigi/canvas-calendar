@@ -65,4 +65,4 @@ def test_chicago_is_a_real_tz_not_an_offset():
 
 def test_rejects_naive_datetime():
     with pytest.raises(ValueError, match="naive"):
-        to_local(datetime(2026, 8, 25, 12))
+        to_local(datetime(2026, 8, 25, 12))  # noqa: DTZ001 -- naive is the point

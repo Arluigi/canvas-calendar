@@ -18,7 +18,8 @@ END_OF_DAY_WINDOW = timedelta(minutes=5)
 
 def parse_canvas_ts(raw: str) -> datetime:
     """Parse a Canvas ISO-8601 UTC timestamp into an aware datetime."""
-    return datetime.fromisoformat(raw.replace("Z", "+00:00"))
+    # fromisoformat handles the trailing "Z" natively on 3.11+
+    return datetime.fromisoformat(raw)
 
 
 def to_local(dt: datetime) -> datetime:

@@ -29,7 +29,7 @@ _MONTHS = {
 }
 
 # "August 26th", "October 2nd", "December 9"
-_NAMED = re.compile(r"\b(" + "|".join(_MONTHS) + r")\s+(\d{1,2})(?:st|nd|rd|th)?\b", re.I)
+_NAMED = re.compile(r"\b(" + "|".join(_MONTHS) + r")\s+(\d{1,2})(?:st|nd|rd|th)?\b", re.IGNORECASE)
 
 # A bare day following a named month via a slash: the "28th" in "August 26th/28th".
 # Anchored to a leading slash so lecture numbers and part numbers are never picked up.

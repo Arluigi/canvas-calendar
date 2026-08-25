@@ -30,7 +30,8 @@ def _parse_uiuc_date(raw: str) -> date | None:
     raw = raw.strip().rstrip("Z")
     if not raw:
         return None
-    return datetime.strptime(raw, "%m-%d-%y").date()
+    # A term start/end date carries no time or zone; .date() is the whole point.
+    return datetime.strptime(raw, "%m-%d-%y").date()  # noqa: DTZ007
 
 
 def parse_section(xml: str) -> Section:

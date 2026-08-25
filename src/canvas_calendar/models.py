@@ -8,7 +8,7 @@ from datetime import datetime
 from enum import Enum
 
 # e.g. mcb_244_120268_262964 -> subject mcb, number 244, term 120268
-_COURSE_CODE = re.compile(r"^([a-z]{2,4})_(\d{3})_(\d{6})_\d+$", re.I)
+_COURSE_CODE = re.compile(r"^([a-z]{2,4})_(\d{3})_(\d{6})_\d+$", re.IGNORECASE)
 
 _DAY_CODES = {"M": 0, "T": 1, "W": 2, "R": 3, "F": 4, "S": 5, "U": 6}
 

@@ -18,7 +18,7 @@ from enum import Enum
 
 from canvas_calendar.models import Assignment
 
-_EXTRA_CREDIT = re.compile(r"extra\s*credit", re.I)
+_EXTRA_CREDIT = re.compile(r"extra\s*credit", re.IGNORECASE)
 
 
 class Disposition(str, Enum):
