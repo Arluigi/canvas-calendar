@@ -185,6 +185,25 @@ Due times cluster into two kinds, and the calendar reflects that:
 Inferred events carry `[inferred]` in the title and a body line explaining the
 derivation, so a guess is never mistaken for a fact at a glance.
 
+## Time zones and DST
+
+Canvas returns due dates in UTC. The courses run in `America/Chicago`, which
+crosses the CDT→CST boundary on 2026-11-01, mid-semester. This is visible in the
+real data — MCB 354's October deadlines arrive as `04:59Z` and its November ones
+as `05:59Z`, both representing 11:59PM local.
+
+Requirements:
+
+- Convert every Canvas timestamp to `America/Chicago` using a real tz database
+  (`zoneinfo`), never a fixed UTC offset. A hardcoded `-5` silently shifts every
+  deadline after Nov 1 by an hour.
+- Classify all-day vs timed **after** conversion to local time. An 11:59PM local
+  deadline must be recognized as end-of-day in both halves of the semester.
+- Write recurring class events with a local time plus timezone ID, not a UTC
+  instant, so a 2:00PM lecture stays at 2:00PM across the transition.
+- Test fixtures must include at least one pre-transition and one
+  post-transition deadline.
+
 ## Error handling
 
 Invariants, in priority order:
