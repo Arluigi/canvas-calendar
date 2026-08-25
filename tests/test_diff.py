@@ -114,3 +114,20 @@ def test_digest_only_beats_a_valid_due_date(tmp_path):
     a = _a(1, when="2026-08-28T15:00:00Z")
     a.digest_only = True
     assert diff([a], StateStore(tmp_path / "s.db"))[0].action is Action.SKIP
+
+
+def test_filtered_run_must_not_prune_other_courses(tmp_path):
+    """A partial fetch is not evidence that missing events are gone. Pruning on
+    a --course subset would delete every event of every other course."""
+    s = StateStore(tmp_path / "s.db")
+    _commit(diff([_a(1), _a(2)], s), s)
+    plan = diff([_a(1)], s, prune=False)
+    assert Action.DELETE not in [p.action for p in plan]
+    assert s.get("cc-2") is not None
+
+
+def test_full_run_still_prunes(tmp_path):
+    s = StateStore(tmp_path / "s.db")
+    _commit(diff([_a(1), _a(2)], s), s)
+    plan = diff([_a(1)], s, prune=True)
+    assert [p.uid for p in plan if p.action is Action.DELETE] == ["cc-2"]

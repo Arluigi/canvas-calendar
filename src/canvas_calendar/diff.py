@@ -37,13 +37,20 @@ def _hash(a: Assignment) -> str:
     return hashlib.sha256(a.name.strip().encode()).hexdigest()[:16]
 
 
-def diff(assignments: list[Assignment], store: StateStore) -> list[PlanEntry]:
+def diff(
+    assignments: list[Assignment], store: StateStore, *, prune: bool = True
+) -> list[PlanEntry]:
     """Compare desired state against stored state.
 
     The comparison key is (due_at, title_hash, source). Including `source` is
     what makes a Canvas-backfilled due date register as an UPDATE to the same
     UID rather than appearing as a second, duplicate event beside the extracted
     one.
+
+    `prune` controls whether state rows absent from `assignments` are emitted as
+    DELETEs. It MUST be False whenever `assignments` is a filtered subset -- a
+    partial fetch is not evidence that the missing events are gone, and pruning
+    on one would delete every event belonging to the courses left out.
     """
     plan: list[PlanEntry] = []
     seen: set[str] = set()
@@ -71,6 +78,7 @@ def diff(assignments: list[Assignment], store: StateStore) -> list[PlanEntry]:
 
         plan.append(PlanEntry(action, a.uid, a, title_hash, due_key, a.source.value))
 
-    for stale in sorted(store.all_uids() - seen):
-        plan.append(PlanEntry(Action.DELETE, stale, None))
+    if prune:
+        for stale in sorted(store.all_uids() - seen):
+            plan.append(PlanEntry(Action.DELETE, stale, None))
     return plan

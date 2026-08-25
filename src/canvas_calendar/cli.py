@@ -49,7 +49,7 @@ def render_plan(plan) -> str:
     return "\n".join(lines) or "nothing to do"
 
 
-def _sync(live: bool) -> int:
+def _sync(live: bool, course: str | None = None) -> int:
     from canvas_calendar.apply import apply_plan
     from canvas_calendar.calendars.graph_auth import GraphAuth
     from canvas_calendar.calendars.outlook import OutlookAdapter
@@ -59,8 +59,15 @@ def _sync(live: bool) -> int:
     from canvas_calendar.state import DEFAULT_STATE_PATH, StateStore
 
     assignments = collect()
+    if course:
+        # Narrowing the write set is how a first live run stays reversible:
+        # verify formatting on one course before committing the whole term.
+        assignments = [a for a in assignments if course.lower() in a.course.lower()]
+        print(f"filtered to course matching {course!r}: {len(assignments)} items")
     store = StateStore(DEFAULT_STATE_PATH)
-    plan = diff(assignments, store)
+    # A filtered run must never prune: the courses we did not fetch are not
+    # gone, and pruning on a subset would delete all of their events.
+    plan = diff(assignments, store, prune=course is None)
     print(render_plan(plan))
 
     auth = GraphAuth(client_id=load_graph_client_id())
@@ -84,6 +91,11 @@ def main() -> int:
         action="store_true",
         help="actually write to the calendar (default is a dry run)",
     )
+    parser.add_argument(
+        "--course",
+        default=None,
+        help="limit the sync to courses whose name contains this string",
+    )
     args = parser.parse_args()
 
     if args.command == "preview":
@@ -91,4 +103,4 @@ def main() -> int:
 
         print(render_preview(collect()))
         return 0
-    return _sync(live=args.live)
+    return _sync(live=args.live, course=args.course)
