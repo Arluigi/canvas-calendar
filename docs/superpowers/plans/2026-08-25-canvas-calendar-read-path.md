@@ -1449,3 +1449,48 @@ trustworthy.
 - Monthly drift check (plan 3)
 - MCB 436 poll mapping — deliberately unresolved; those 14 items stay
   `Source.UNRESOLVED` and surface in the digest
+
+---
+
+## Execution record (2026-08-25)
+
+Completed on branch `feat/read-path`. 94 tests, ruff clean, all seven gate
+checks passing against live data.
+
+### Task 11 (added during execution): SubHeader assessment extraction
+
+The verification gate caught a gap this plan shipped with. `parse_subheader_date`
+was implemented and tested in Task 8, but `collect()` in Task 10 only read
+`/assignments` and only walked modules when an undated assignment existed.
+MCB 320 has zero assignments, so it walked nothing and contributed nothing --
+the precise silent-omission failure the project exists to prevent. Tested
+capability is not the same as wired behaviour, and only the live gate exposed
+the difference.
+
+Fixes applied:
+
+- `subheader_events()` builds assessment events from dated SubHeader text,
+  keyword-matched so lecture topics are not mistaken for deadlines.
+- `collect()` walks modules unconditionally, serving both extraction paths in
+  one pass.
+- **Latent UID collision fixed.** The spec asserted every managed item is a
+  Canvas assignment with a stable id. SubHeader events break that: module items
+  occupy a separate ID space, so module item `5440597` and assignment `5440597`
+  would have produced identical UIDs and clobbered each other on the calendar.
+  `Assignment` now carries a `namespace`; SubHeader events use `mi-`.
+
+This last point matters for plan 2 — the never-delete-foreign-events check and
+the diff engine both key on UID.
+
+### Known unresolved (correct behaviour, not defects)
+
+| Course | Count | Why |
+|---|---:|---|
+| MCB 436 | 18 | 14 polls whose numbering does not match its lectures, + 4 EC summaries |
+| MCB 364 | 12 | `Wk1`-`Wk11` and `Assignment 1` are not inside the dated week modules |
+| FSHN 120 | 2 | Alternate dropbox and the error-report EC item |
+| MCB 354 | 1 | Roll Call Attendance -- not a deadline |
+
+All are surfaced in output rather than dropped. The MCB 364 case was not
+anticipated by the spec: those items live outside the week modules, so module
+extraction cannot reach them. Worth a look before plan 3's drift check.
