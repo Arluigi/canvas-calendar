@@ -26,7 +26,7 @@ All six active courses, via the Canvas API:
 | MCB 354 | 26 | 25 | 1 | Reliable |
 | MCB 436 | 31 | 13 | 18 | Half-blind |
 | MCB 364 | 23 | 1 | 22 | Nearly blind |
-| MCB 320 | 0 | 0 | — | Invisible |
+| MCB 320 | 0 | 0 | — | No assignments API; schedule in SubHeaders |
 | **Total** | **184** | **141** | **43** | |
 
 The failure mode is **undated Canvas assignments**, not external platforms. The
@@ -39,9 +39,29 @@ Specifics:
   `Pre-Lab Quiz Wk1`, `Wk1`–`Wk11`, and `Image submission Wk1`–`Wk11`: a real
   weekly lab cadence, entirely invisible to due-date queries.
 - **MCB 436** — 14 `Class N - Poll` items and 4 extra-credit summaries, undated.
-  Polls are in-class, so they are anchored to lecture meeting days.
-- **MCB 320** — zero assignments, no syllabus body, 7 modules containing only
-  Files and SubHeaders. Source of coursework unknown.
+  Its module titles date all 14 lectures (`8/24 - Lecture 1` … `12/7 - Lecture 14`),
+  but the polls are numbered `Class 1, 3, 4, … 16, 17` — running to 17 against
+  only 14 lectures. `Class N` is not `Lecture N`; no safe mapping exists from the
+  data alone. This is the one genuinely unresolved case.
+- **MCB 320** — zero assignments and no syllabus body, but a content survey
+  (2026-08-25) found the full schedule published as dated SubHeader text: 28
+  lectures, four review sessions, and four exams (Sep 16, Oct 12, Nov 6, Dec 9).
+  Recoverable in full. See `modules/`.
+
+### Where schedules actually live
+
+The decisive follow-up finding: **courses publish real dates in module titles
+and SubHeaders, not in due-date fields.** Of the 43 undated assignments, 22
+(all of MCB 364) resolve exactly through their containing module's stated dates,
+and MCB 320's entire assessment schedule is recoverable the same way. Only
+MCB 436's 14 polls resist, because their numbering does not match its lecture
+numbering.
+
+Net effect: **zero items require date inference.** Every undated assignment is
+either extracted from authored module text, routed to the digest as extra
+credit, excluded as an administrative artifact, or explicitly surfaced as
+unresolved. The approval gate remains, but it now reviews extracted dates rather
+than guesses.
 
 **Consequence for design:** Canvas's built-in ICS feed is not a viable shortcut.
 It is generated from due dates, so it would surface 141 items, omit 43, and
@@ -51,7 +71,8 @@ imply full coverage. Rejected for that reason, not for effort.
 
 - Weekly recurring calendar events for class meetings, with building and room.
 - Daily unattended sync of assignment deadlines to a calendar.
-- Undated assignments get inferred dates, clearly labeled, human-approved once.
+- Undated assignments get dates extracted from authored module text, clearly
+  labeled, human-approved once. What cannot be resolved is surfaced, not guessed.
 - Nothing is ever silently dropped.
 
 ## Non-goals
@@ -66,12 +87,12 @@ imply full coverage. Rejected for that reason, not for effort.
 | Decision | Choice | Rationale |
 |---|---|---|
 | Meeting-time source | UIUC Course Explorer API | Structured days/times/building/room. Canvas has none of this. |
-| Undated handling | Infer, then verify before first write | 22 of 43 would otherwise be unreviewed guesses. |
+| Undated handling | Extract from module text, then verify | Courses publish real dates in module titles; 0 items need inference. |
 | Calendar backend | Outlook preferred, Google fallback | User preference; adapter keeps it swappable. |
 | Runtime | LaunchAgent on the Mac | Can hold real credentials; proven pattern on this machine. |
 | Event shape | Hybrid — timed vs all-day | Due times genuinely cluster into two kinds. |
 | Filtering | Explicit extra-credit match, not point value | Point value is not a reliable proxy for importance — see Inclusion rules. |
-| Architecture | Deterministic core, LLM at the edges | Daily sync is a diff problem; only inference needs judgment. |
+| Architecture | Deterministic core, LLM at the edges | Daily sync and date extraction are both parsing; the LLM only does drift detection. |
 
 ### On the meeting-time source
 
@@ -94,13 +115,15 @@ The daily path covers 141 of 184 items and requires no judgment, so it is plain
 code: fetch, diff, write. The LLM is reserved for the two genuinely fuzzy jobs,
 neither of which runs daily:
 
-- **One-time inference** of the 43 undated dates.
-- **Monthly drift check** — re-read syllabi, announcements, and MCB 320's module
-  files, and report anything resembling a deadline the deterministic path cannot
-  see.
+- **One-time review** of the 43 extracted dates before first write.
+- **Monthly drift check** — re-read syllabi, announcements, and module structure,
+  and report anything resembling a deadline the deterministic path cannot see.
+  This is what catches a course restructuring mid-semester.
 
-The two halves fail independently: a bug in inference cannot corrupt the daily
-sync, and the daily sync keeps working if inference is wrong.
+Note that the survey shrank the LLM's role considerably. Date resolution turned
+out to be parsing, not judgment, so it moved into `modules/` as plain code. The
+two halves still fail independently: a bad extraction cannot corrupt the daily
+sync, and the daily sync keeps working if extraction is wrong.
 
 ## Components
 
@@ -108,7 +131,8 @@ sync, and the daily sync keeps working if inference is wrong.
 canvas-calendar/
   catalog/    UIUC Course Explorer client
   canvas/     thin Canvas REST client
-  infer/      one-time date inference for undated assignments
+  modules/    date extraction from module titles and SubHeader text
+  infer/      residual inference for what modules/ cannot date
   calendar/   adapter interface + Outlook and Google implementations
   state/      SQLite diff state
   digest/     digest.md writer + macOS notification
@@ -124,25 +148,55 @@ package: that repo moved 432 commits in six months, and this project must not
 break when an internal function is renamed upstream. Roughly five endpoints are
 needed.
 
-**`infer/`** — extracts `Wk(\d+)` / `Week (\d+)` / `Class (\d+)` from assignment
-names and maps the parsed number to a calendar date anchored to the section's
-real `startDate`. Emits proposals with a per-item rationale. Never writes to a
-calendar directly.
+**`modules/`** — the primary resolver for undated work, and the reason
+inference is nearly unnecessary. A content survey on 2026-08-25 found that
+courses publish their real schedules in module titles and SubHeader text, not
+in due-date fields. Two patterns, both deterministic to parse:
 
-**Critical: map the label, not the ordinal.** MCB 364's items run
-`Wk1…Wk6, Wk8…Wk11` — week 7 is absent, as is `Class 2`, `12`, and `15` in
-MCB 436. Treating these as a sequence and taking the *n*-th occurrence of the
-meeting day would place every item after the gap one week early, silently. The
-number in the label is the week index and must be used as such:
+*Dated module titles* (MCB 364):
 
 ```
-date = first_meeting_day_on_or_after(section.startDate) + (label_number - 1) weeks
+Week 1 - Intro to Cell culture and Aseptic Techniques - August 26th/28th
+Week 7 - Midterm - October 7th/ 9th
+Weeks 12 & 13 - Independent project  November 11th/13th & November 18th/20th
+Week 15 - December 9th - NO CLASS
 ```
 
-Then subtract any non-instruction weeks that fall before it. A gap in the
-sequence must never shift subsequent dates. This is the single most likely
-source of a wrong-but-plausible schedule, so it gets direct unit tests against
-the real MCB 364 and MCB 436 label sets, including the gaps.
+An undated assignment resolves through its **containing module**:
+`Pre-Lab Quiz -Week 1` sits inside the Week 1 module, so its date comes from
+that module's stated dates. This is extraction from an authored source, not
+inference, and it is strictly better than any arithmetic scheme — note that
+weeks 12 and 13 are merged and week 15 is cancelled, so both ordinal counting
+*and* label arithmetic would produce wrong dates here. Reading the title does
+not.
+
+*Dated SubHeaders* (MCB 320):
+
+```
+September 16: EXAM 1 (Lectures 1-7 of PARTS 1-2)
+October 12:   EXAM 2 (Lectures 8-13 of PART 3)
+November 6:   EXAM 3 (Lectures 14-21 of PARTS 4-5)
+December 9:   EXAM 4 (Lectures 22-28 of PART 6)
+```
+
+MCB 320 exposes zero Canvas assignments, but its entire 28-lecture schedule and
+all four exams are dated SubHeader text. The course is fully recoverable; it was
+never invisible, only absent from the assignments API. Exams and review sessions
+are matched by keyword (`exam`, `midterm`, `review for`) and calendared.
+
+Both patterns require a year, which module text omits. The term's `startDate`
+and `endDate` from Course Explorer supply it, with a rollover check so
+"December 9" and "August 26" resolve into the correct term.
+
+**`infer/`** — the residual case, now much smaller. After module extraction the
+only genuinely ambiguous items are MCB 436's 14 `Class N - Poll` entries. Its
+module titles date the lectures (`8/24 - Lecture 1` … `12/7 - Lecture 14`), but
+the polls are numbered `Class 1, 3, 4, … 16, 17` — fourteen polls whose numbers
+run to seventeen, against only fourteen lectures. `Class N` is therefore **not**
+`Lecture N`, and no safe mapping exists from the data alone. These are treated
+as unresolved: digest-only, never calendared on a guess, and surfaced once for
+the user to map or dismiss. Anything the module extractor cannot date follows
+the same path.
 
 **`calendar/`** — interface: `upsert(uid, …)`, `delete(uid)`, `list(calendar)`.
 Idempotency comes from a deterministic UID derived from the Canvas assignment ID.
@@ -159,7 +213,7 @@ Two, not one:
 - **`UIUC Classes`** — recurring meeting blocks.
 - **`UIUC Assignments`** — deadlines.
 
-Separate so either can be collapsed independently, and so a bad inference run is
+Separate so either can be collapsed independently, and so a bad extraction run is
 undone by clearing one calendar rather than untangling a merged one.
 
 ## Flows
@@ -169,20 +223,20 @@ undone by clearing one calendar rather than untangling a merged one.
 ```
 resolve sections (confirm with user)
   → generate recurring class events
-  → run inference on the 43 undated items
-  → present full proposed schedule for approval
-  → on approval: freeze to inferred_dates.yaml, then write
+  → extract dates from module titles + SubHeaders
+  → present full extracted schedule for approval
+  → on approval: freeze to resolved_dates.yaml, then write
 ```
 
-`inferred_dates.yaml` is hand-editable and authoritative thereafter. If an
-instructor shifts lab week 7, one line changes; inference is not re-run.
+`resolved_dates.yaml` is hand-editable and authoritative thereafter. If an
+instructor shifts lab week 7, one line changes; extraction is not re-run.
 
 ### Daily sync (unattended)
 
 ```
-load config + frozen inferred dates
+load config + frozen resolved dates
   → fetch assignments (6 courses)
-  → merge dated (Canvas) + inferred (yaml)
+  → merge dated (Canvas) + extracted (yaml)
   → filter (see Inclusion rules)
   → diff against SQLite
   → apply: create / update / delete
@@ -231,9 +285,9 @@ loses coursework.
 
 ### Identity and precedence
 
-Every item under management — dated or inferred — is a real Canvas assignment
+Every item under management — dated or extracted — is a real Canvas assignment
 with a stable numeric ID (verified: MCB 364's `Wk1` is assignment `1605622`).
-There is therefore exactly one UID scheme, and no inferred item lacks an anchor:
+There is therefore exactly one UID scheme, and no extracted item lacks an anchor:
 
 ```
 uid = f"cc-{canvas_assignment_id}"
@@ -241,16 +295,16 @@ uid = f"cc-{canvas_assignment_id}"
 
 The `cc-` prefix is what the never-delete-foreign-events check tests against.
 
-**Canvas always supersedes inference.** Instructors commonly backfill due dates.
+**Canvas always supersedes extraction.** Instructors commonly backfill due dates.
 When an item that was previously undated acquires a real `due_at`:
 
 - The UID is unchanged, so this is an **update**, never a duplicate event.
-- The event's `source` flips from `inferred` to `canvas`, the `[inferred]` label
-  is removed, and the change is called out in the digest.
-- The corresponding `inferred_dates.yaml` entry is marked superseded rather than
-  deleted, so the history of what was guessed remains auditable.
+- The event's `source` flips from `extracted` to `canvas`, the `[extracted]`
+  label is removed, and the change is called out in the digest.
+- The corresponding `resolved_dates.yaml` entry is marked superseded rather than
+  deleted, so the history of what was derived remains auditable.
 
-**Hand edits to `inferred_dates.yaml` are first-class changes.** The diff hashes
+**Hand edits to `resolved_dates.yaml` are first-class changes.** The diff hashes
 the merged record — `(due_at, title, source)` — not just the Canvas payload, so
 editing a date by hand produces a `changed` verdict and updates the calendar on
 the next run, exactly as a Canvas-side change would.
@@ -263,8 +317,9 @@ Due times cluster into two kinds, and the calendar reflects that:
   exactly when lecture begins).
 - **All-day banners** for administrative end-of-day deadlines (11:59PM).
 
-Inferred events carry `[inferred]` in the title and a body line explaining the
-derivation, so a guess is never mistaken for a fact at a glance.
+Extracted events carry `[extracted]` in the title and a body line quoting the
+module text they came from (e.g. *"from module: Week 1 … August 26th/28th"*), so
+a derived date is never mistaken for an instructor-set due date at a glance.
 
 ## Time zones and DST
 
@@ -305,15 +360,19 @@ Invariants, in priority order:
    2026-08-24 → 2026-12-09). Every run reconciles that whole window rather than
    a delta, so a missed run self-heals — but the window never grows into "all
    history." At 184 items this is a single cheap pass.
-7. **MCB 320 is reported as an explicit coverage gap in every digest** from the
-   first run: *"MCB 320 — coursework source unknown, 0 assignments visible, not
-   synced."* Its resolution is deferred to the drift check, but the gap must be
-   visible daily rather than surfacing once a month. A known blind spot that is
-   announced is survivable; a silent one is what this project exists to prevent.
+7. **Anything undatable is announced in every digest**, never dropped. This
+   currently means MCB 436's 14 `Class N - Poll` items, listed as *"unresolved —
+   poll numbering does not match lecture numbering, not calendared."* A known
+   blind spot that is announced is survivable; a silent one is what this project
+   exists to prevent. If module extraction later fails for a course whose
+   structure changed, that course joins this list rather than silently
+   contributing nothing.
 
 ## Testing
 
-- Unit: inference logic against real MCB 364 fixtures.
+- Unit: module-title and SubHeader date parsing against real MCB 364 and MCB 320
+  fixtures, including the merged `Weeks 12 & 13` title, the cancelled `Week 15`,
+  and the `November 20, November 30` two-date SubHeader.
 - Unit: diff logic across new / changed / removed.
 - Contract: recorded fixtures for both APIs; tests never hit the network.
 - Dedicated test for the never-delete-foreign-events invariant.
@@ -330,9 +389,12 @@ Invariants, in priority order:
    Mitigation: hardcode Fall 2026 non-instruction days as a short config list,
    applied as iCalendar `EXDATE` entries on the recurring event — the standard
    mechanism, not a bespoke one. Accurate but manually maintained.
-3. **MCB 320 coursework source** is unresolved until its module files are
-   examined. The drift check provides detection, not a guarantee of coverage;
-   until then the gap is announced in every digest (error-handling rule 7).
+3. ~~**MCB 320 coursework source.**~~ **Resolved 2026-08-25.** Its 28-lecture
+   schedule and four exam dates are dated SubHeader text, extractable
+   deterministically. What remains open is narrower: MCB 436's 14 `Class N`
+   polls cannot be mapped to its 14 dated lectures, since the poll numbers run
+   to 17. Needs one decision from the user — map them by hand, or leave them
+   digest-only.
 4. **Canvas token renewal has no unattended path.** Illinois caps access-token
    lifetime at roughly 30 days — the current token was issued 2026-08-25 and
    expires 2026-09-24, about four weeks into the semester. An "unattended daily
@@ -348,9 +410,10 @@ Invariants, in priority order:
 | Risk | Impact | Mitigation |
 |---|---|---|
 | UIUC blocks third-party OAuth to M365 | Outlook unusable | Adapter falls back to Google; test auth first, before building on it |
-| Inference wrong for MCB 364 | 22 misplaced events | Human approval gate; `[inferred]` labels; single-calendar rollback |
+| Extraction wrong for MCB 364 | 22 misplaced events | Human approval gate; `[extracted]` labels quoting source text; single-calendar rollback |
 | Canvas token expires (~monthly) | Sync stops until manual renewal | Hard failure + 5-day warning; milestone 7 pursues OAuth refresh |
-| Gap in a week-label sequence | Every later inferred date off by a week | Label-indexed mapping, not ordinal; unit tests over real gapped label sets |
+| Course restructures its modules mid-term | Extraction stops dating some items | Undatable items announced in every digest (rule 7), never silently omitted |
+| Module title date is ambiguous or malformed | Wrong date, plausible-looking | Parse failures are surfaced, not guessed around; approval gate reviews all extracted dates |
 | 0-point item treated as unimportant | Required FSHN coursework dropped | Filter on explicit extra-credit marker; 0-point calendared by default |
 | Mac asleep at scheduled time | Missed run | Catch-up logic: each run reconciles full horizon, not just the delta |
 
@@ -359,8 +422,10 @@ Invariants, in priority order:
 1. Verify Outlook/Graph auth works. **Gate — determines the backend.**
 2. Course Explorer client + section resolution → class meeting events.
 3. Canvas client + deterministic daily sync for the 141 dated items.
-4. Inference + approval gate for the 43 undated.
+4. Module date extraction + approval gate for the 43 undated, including
+   MCB 320's exam schedule from SubHeaders.
 5. LaunchAgent, digest, notifications.
-6. Monthly drift check, including MCB 320.
+6. Monthly drift check. Also decide MCB 436's poll mapping — the only item the
+   survey could not resolve.
 7. Investigate OAuth2 refresh-token auth to remove the ~monthly manual token
    renewal. Not blocking, but the system is not truly unattended until it lands.
