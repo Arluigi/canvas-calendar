@@ -24,3 +24,23 @@ def load_canvas_credentials(env_path: Path | None = None) -> tuple[str, str]:
     if not url.endswith("/api/v1"):
         url = f"{url}/api/v1"
     return url, token
+
+
+GRAPH_CONFIG = Path.home() / ".config" / "canvas-calendar" / "config.json"
+
+
+def load_graph_client_id() -> str:
+    """Entra application (client) id. Not a secret -- the app is a public
+    client, which is precisely why device-code auth is safe here."""
+    import json
+
+    env = os.environ.get("CANVAS_CALENDAR_CLIENT_ID")
+    if env:
+        return env
+    if GRAPH_CONFIG.exists():
+        cid = json.loads(GRAPH_CONFIG.read_text()).get("client_id")
+        if cid:
+            return cid
+    raise RuntimeError(
+        f"no Graph client id -- set CANVAS_CALENDAR_CLIENT_ID or write {GRAPH_CONFIG}"
+    )

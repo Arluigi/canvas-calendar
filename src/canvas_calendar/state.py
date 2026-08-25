@@ -6,6 +6,8 @@ import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
 
+DEFAULT_STATE_PATH = Path.home() / ".config" / "canvas-calendar" / "state.db"
+
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS events (
     uid         TEXT PRIMARY KEY,

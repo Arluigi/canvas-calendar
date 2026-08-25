@@ -146,5 +146,10 @@ def collect() -> list[Assignment]:
         titles, events = _walk_modules(client, cid, label)
         items = resolve_undated(items, titles, TERM_YEAR) + events
 
-        results.extend(a for a in items if classify(a) is not Disposition.SKIP)
+        for a in items:
+            verdict = classify(a)
+            if verdict is Disposition.SKIP:
+                continue
+            a.digest_only = verdict is Disposition.DIGEST
+            results.append(a)
     return results

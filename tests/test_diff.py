@@ -99,3 +99,18 @@ def test_namespaced_uid_is_tracked_separately(tmp_path):
     asg = _a(5440597)
     plan = diff([sub, asg], s)
     assert {p.uid for p in plan} == {"cc-mi-5440597", "cc-5440597"}
+
+
+def test_digest_only_items_are_never_calendared(tmp_path):
+    """classify() marks extra credit as DIGEST. Computing that verdict and then
+    calendaring the item anyway is how 9 FSHN extra-credit entries leaked into
+    a dry run."""
+    a = _a(1, name="PILLAR A VIDEO QUIZ - extra credit points will update")
+    a.digest_only = True
+    assert [p.action for p in diff([a], StateStore(tmp_path / "s.db"))] == [Action.SKIP]
+
+
+def test_digest_only_beats_a_valid_due_date(tmp_path):
+    a = _a(1, when="2026-08-28T15:00:00Z")
+    a.digest_only = True
+    assert diff([a], StateStore(tmp_path / "s.db"))[0].action is Action.SKIP

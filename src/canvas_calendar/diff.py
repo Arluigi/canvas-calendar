@@ -49,7 +49,7 @@ def diff(assignments: list[Assignment], store: StateStore) -> list[PlanEntry]:
     seen: set[str] = set()
 
     for a in assignments:
-        if a.due_at is None or a.source is Source.UNRESOLVED:
+        if a.due_at is None or a.source is Source.UNRESOLVED or a.digest_only:
             plan.append(PlanEntry(Action.SKIP, a.uid, a))
             continue
 
