@@ -136,7 +136,7 @@ def main() -> int:
     if args.command == "debrief":
         from canvas_calendar.run_debrief import run as run_debrief
 
-        return run_debrief(send=args.live)
+        return run_debrief(send=args.live, force=args.force)
     if args.command == "token":
         from datetime import datetime
 

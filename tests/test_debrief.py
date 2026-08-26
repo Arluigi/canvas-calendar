@@ -258,3 +258,13 @@ def test_real_room_locations_are_preserved():
     from canvas_calendar.debrief import _tidy_location
 
     assert _tidy_location("Foellinger Auditorium AUD") == "Foellinger Auditorium AUD"
+
+
+def test_debrief_is_sent_once_per_day(monkeypatch, tmp_path):
+    """A pmset scheduled wake and launchd's missed-job catch-up can both fire
+    on the same morning; without a guard that sends two debriefs."""
+    import canvas_calendar.run_debrief as rd
+
+    monkeypatch.setattr(rd, "load_last_run", lambda: NOW)
+    assert rd.already_sent_today(NOW) is True
+    assert rd.already_sent_today(NOW + timedelta(days=1)) is False

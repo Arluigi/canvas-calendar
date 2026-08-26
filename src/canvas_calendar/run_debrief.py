@@ -110,7 +110,20 @@ def gather() -> dict:
     }
 
 
-def run(send: bool = True, to: str | None = None) -> int:
+def already_sent_today(now: datetime) -> bool:
+    """One debrief per day.
+
+    Two paths can fire the job on the same morning: a pmset scheduled wake at
+    the right time, and launchd running the *missed* job when the lid is
+    opened later. Without this guard an unlucky morning sends twice.
+    """
+    return load_last_run().date() == now.date()
+
+
+def run(send: bool = True, to: str | None = None, force: bool = False) -> int:
+    if send and not force and already_sent_today(datetime.now(CHICAGO)):
+        print("debrief already sent today; use --force to send another")
+        return 0
     data = gather()
     body = render(data)
     subject = subject_line(data)
