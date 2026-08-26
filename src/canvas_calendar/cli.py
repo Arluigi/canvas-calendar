@@ -96,7 +96,7 @@ def _sync(live: bool, course: str | None = None, force: bool = False) -> int:
 
 def main() -> int:
     parser = argparse.ArgumentParser(prog="canvas-calendar")
-    parser.add_argument("command", choices=["preview", "sync", "meetings"])
+    parser.add_argument("command", choices=["preview", "sync", "meetings", "daily", "digest"])
     parser.add_argument(
         "--live",
         action="store_true",
@@ -114,6 +114,15 @@ def main() -> int:
     )
     args = parser.parse_args()
 
+    if args.command == "daily":
+        from canvas_calendar.daily import run
+
+        return run(dry_run=not args.live)
+    if args.command == "digest":
+        from canvas_calendar.daily import DIGEST_PATH
+
+        print(DIGEST_PATH.read_text() if DIGEST_PATH.exists() else "no digest yet")
+        return 0
     if args.command == "meetings":
         from canvas_calendar.sync_meetings import sync_meetings
 
