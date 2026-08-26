@@ -101,7 +101,7 @@ def canvas_conversations(client, limit: int = 8) -> list[dict]:
 # --- Outlook sources ------------------------------------------------------
 
 
-def outlook_unread(auth, hours: int = 48, limit: int = 15) -> list[dict]:
+def outlook_unread(auth, hours: int = 48, limit: int = 40) -> list[dict]:
     """Unread inbox mail from the last `hours`."""
     since = (datetime.now(CHICAGO) - timedelta(hours=hours)).astimezone().isoformat()
     r = httpx.get(
@@ -109,7 +109,7 @@ def outlook_unread(auth, hours: int = 48, limit: int = 15) -> list[dict]:
         headers={"Authorization": f"Bearer {auth.access_token()}"},
         params={
             "$filter": f"isRead eq false and receivedDateTime ge {since}",
-            "$select": "subject,from,receivedDateTime,bodyPreview,webLink",
+            "$select": "subject,from,toRecipients,receivedDateTime,bodyPreview,importance",
             "$orderby": "receivedDateTime desc",
             "$top": str(limit),
         },
@@ -120,11 +120,29 @@ def outlook_unread(auth, hours: int = 48, limit: int = 15) -> list[dict]:
         {
             "subject": m.get("subject") or "(no subject)",
             "from": ((m.get("from") or {}).get("emailAddress") or {}).get("name", "?"),
+            "from_address": ((m.get("from") or {}).get("emailAddress") or {}).get("address", ""),
+            "to": [
+                (t.get("emailAddress") or {}).get("address", "")
+                for t in (m.get("toRecipients") or [])
+            ],
+            "importance": m.get("importance", "normal"),
             "received": m.get("receivedDateTime", ""),
             "preview": " ".join((m.get("bodyPreview") or "").split())[:160],
         }
         for m in r.json().get("value", [])
     ]
+
+
+def _tidy_location(raw: str) -> str:
+    """Meeting locations are often a full join URL, which swamps the row.
+    Name the platform instead; the calendar entry still holds the link."""
+    low = (raw or "").lower()
+    for host, label in (("zoom.us", "Zoom"), ("teams.microsoft", "Teams"),
+                        ("meet.google", "Google Meet"), ("webex", "Webex")):
+        if host in low:
+            return label
+    raw = " ".join((raw or "").split())
+    return raw[:44] + ("…" if len(raw) > 44 else "")
 
 
 def _calendar_view(auth, path: str, start: datetime, end: datetime) -> list[dict]:
@@ -178,7 +196,7 @@ def todays_events(auth, course_calendar_id: str | None = None) -> list[dict]:
                     "subject": e.get("subject", ""),
                     "time": "all day" if e.get("isAllDay") else e["start"]["dateTime"][11:16],
                     "all_day": bool(e.get("isAllDay")),
-                    "location": (e.get("location") or {}).get("displayName", ""),
+                    "location": _tidy_location((e.get("location") or {}).get("displayName", "")),
                     "organizer": ((e.get("organizer") or {}).get("emailAddress") or {}).get(
                         "name", ""
                     ),

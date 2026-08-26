@@ -20,12 +20,18 @@ h1{font-size:20px;margin:0 0 2px}
 h2{font-size:14px;text-transform:uppercase;letter-spacing:.04em;color:#444;
    border-bottom:1px solid #e3e3e3;padding-bottom:5px;margin:26px 0 10px}
 .row{margin:0 0 9px}
-.when{display:inline-block;min-width:96px;color:#555;font-variant-numeric:tabular-nums}
+table{border-collapse:collapse;width:100%;margin:0 0 4px}
+td{padding:3px 0;vertical-align:baseline}
+td.when{width:92px;color:#555;font-variant-numeric:tabular-nums;white-space:nowrap;
+        padding-right:14px}
+td.course{width:74px;font-weight:600;white-space:nowrap;padding-right:10px}
+.day{font-weight:600;color:#222;margin:14px 0 3px;font-size:13px}
+.day:first-of-type{margin-top:4px}
 .tag{font-weight:600}
 .meta{color:#777;font-size:13px}
-.body{color:#555;font-size:13px;margin:2px 0 0 96px}
+.body{color:#555;font-size:13px;margin:1px 0 8px 106px}
 .urgent{color:#b3261e;font-weight:600}
-.soon{color:#8a5a00}\n.meet{background:#e8f0fb;color:#1a4d8f;font-size:11px;padding:1px 6px;border-radius:3px;margin-right:6px}
+.soon{color:#8a5a00}\n
 .empty{color:#888;font-style:italic}
 .gap{background:#fbf7e8;border-left:3px solid #d9b45b;padding:9px 12px;margin:8px 0;
      font-size:13px}
@@ -40,6 +46,43 @@ def _e(s: str) -> str:
     return html.escape(str(s or ""))
 
 
+def _clock(hhmm: str) -> str:
+    """'14:00' -> '2:00 PM'. 24h times in an email read as data, not a schedule."""
+    try:
+        h, m = (int(x) for x in hhmm.split(":"))
+    except (ValueError, AttributeError):
+        return hhmm
+    ampm = "AM" if h < 12 else "PM"
+    return f"{(h % 12) or 12}:{m:02d} {ampm}"
+
+
+def _deadline(a) -> str:
+    """An 11:59 PM due time is administrative, not a schedule. Printing it on
+    every row was most of the visual noise, so end-of-day says so instead."""
+    when = to_local(a.due_at)
+    if when.hour == 23 and when.minute >= 55:
+        return "end of day"
+    return when.strftime("%-I:%M %p")
+
+
+def _by_day(due, now):
+    """Group deadlines under one heading per day, in order."""
+    groups: dict[str, list] = {}
+    for a in due:
+        groups.setdefault(to_local(a.due_at).date().isoformat(), []).append(a)
+    out = []
+    for iso in sorted(groups):
+        d = datetime.fromisoformat(iso).date()
+        delta = (d - now.date()).days
+        if delta <= 0:
+            out.append((("Today", "urgent"), groups[iso]))
+        elif delta == 1:
+            out.append((("Tomorrow", "soon"), groups[iso]))
+        else:
+            out.append(((d.strftime("%A, %B %-d"), ""), groups[iso]))
+    return out
+
+
 def render(data: dict) -> str:
     now = data["now"]
     p: list[str] = [
@@ -52,16 +95,15 @@ def render(data: dict) -> str:
     p.append("<h2>Today</h2>")
     timed = [e for e in data.get("events", []) if not e["all_day"]]
     if timed:
+        p.append("<table>")
         for e in timed:
-            bits = [b for b in (e.get("location"), e.get("organizer")) if b]
-            meta = f' <span class="meta">· {_e(" · ".join(bits))}</span>' if bits else ""
-            # A meeting from the personal calendar is the thing most likely to
-            # collide with a class, so make it visually distinct.
-            mark = "" if e.get("kind") == "course" else '<span class="meet">meeting</span> '
+            loc = e.get("location") or ""
+            meta = f' <span class="meta">· {_e(loc)}</span>' if loc else ""
             p.append(
-                f'<div class="row"><span class="when">{_e(e["time"])}</span>'
-                f'{mark}<span class="tag">{_e(e["subject"])}</span>{meta}</div>'
+                f'<tr><td class="when">{_e(_clock(e["time"]))}</td>'
+                f'<td><span class="tag">{_e(e["subject"])}</span>{meta}</td></tr>'
             )
+        p.append("</table>")
     else:
         p.append('<div class="empty">Nothing scheduled today.</div>')
 
@@ -69,20 +111,18 @@ def render(data: dict) -> str:
     p.append("<h2>Due</h2>")
     due = data.get("due", [])
     if due:
-        for a in due:
-            when = to_local(a.due_at)
-            days = (when.date() - now.date()).days
-            if days <= 0:
-                cls, label = "urgent", "TODAY"
-            elif days == 1:
-                cls, label = "soon", "tomorrow"
-            else:
-                cls, label = "", when.strftime("%a %b %-d")
-            t = "" if a.due_at.hour == 23 else when.strftime(" %-I:%M %p")
-            p.append(
-                f'<div class="row"><span class="when {cls}">{label}{t}</span>'
-                f'<span class="tag">{_e(a.course)}</span> {_e(a.name[:70])}</div>'
-            )
+        # Grouped by day so the date is stated once as a heading instead of
+        # repeated on every row, which is what made this read as a wall.
+        for day, items in _by_day(due, now):
+            label, cls = day
+            p.append(f'<div class="day {cls}">{_e(label)}</div><table>')
+            for a in items:
+                p.append(
+                    f'<tr><td class="when">{_e(_deadline(a))}</td>'
+                    f'<td class="course">{_e(a.course)}</td>'
+                    f"<td>{_e(a.name[:74])}</td></tr>"
+                )
+            p.append("</table>")
     else:
         p.append('<div class="empty">Nothing due in the next 7 days.</div>')
 
@@ -101,33 +141,35 @@ def render(data: dict) -> str:
     else:
         p.append('<div class="empty">Nothing new since the last debrief.</div>')
 
-    # --- canvas messages
-    convos = data.get("conversations", [])
-    if convos:
-        p.append(f"<h2>Canvas inbox ({len(convos)} unread)</h2>")
-        for c in convos:
-            p.append(
-                f'<div class="row"><span class="tag">{_e(c["from"])}</span> '
-                f'— {_e(c["subject"][:64])}</div>'
-                f'<div class="body">{_e(c["preview"])}</div>'
-            )
-
     # --- outlook mail
     mail = data.get("mail")
     if mail is None:
         p.append("<h2>Email</h2>")
         p.append('<div class="err">Could not read your inbox — check Mail.Read is granted.</div>')
     elif mail:
-        p.append(f"<h2>Unread email ({len(mail)})</h2>")
+        p.append(f"<h2>Worth a look ({len(mail)})</h2><table>")
         for m in mail:
-            stamp = m["received"][5:10] if m.get("received") else ""
             p.append(
-                f'<div class="row"><span class="when">{_e(stamp)}</span>'
-                f'<span class="tag">{_e(m["from"][:32])}</span> — {_e(m["subject"][:60])}</div>'
-                f'<div class="body">{_e(m["preview"])}</div>'
+                f'<tr><td class="course">{_e(m["from"][:22])}</td>'
+                f'<td><span class="tag">{_e(m["subject"][:66])}</span>'
+                f'<div class="body" style="margin-left:0">{_e(m["preview"][:150])}</div></td></tr>'
+            )
+        p.append("</table>")
+        skipped = data.get("mail_filtered", [])
+        if skipped:
+            p.append(
+                f'<div class="meta">{len(skipped)} other unread message'
+                f'{"s" if len(skipped) != 1 else ""} judged routine '
+                f"(receipts, bulk mail, automated senders).</div>"
             )
     else:
-        p.append("<h2>Email</h2><div class=\"empty\">No unread mail in the last 48 hours.</div>")
+        n = len(data.get("mail_filtered", []))
+        extra = f" {n} routine message{'s' if n != 1 else ''} set aside." if n else ""
+        p.append(
+            '<h2>Worth a look</h2><div class="empty">Nothing needing your attention.'
+            + _e(extra)
+            + "</div>"
+        )
 
     # --- standing gaps
     gaps = data.get("unresolved", {})
@@ -162,14 +204,11 @@ def subject_line(data: dict) -> str:
         if a.due_at and to_local(a.due_at).date() == now.date()
     )
     events = [e for e in data.get("events", []) if not e["all_day"]]
-    meetings = [e for e in events if e.get("kind") != "course"]
     bits = []
     if due_today:
         bits.append(f"{due_today} due today")
     if events:
         bits.append(f"{len(events)} on your calendar")
-    if meetings:
-        bits.append(f"{len(meetings)} meeting{'s' if len(meetings) != 1 else ''}")
     anns = len(data.get("announcements", []))
     if anns:
         bits.append(f"{anns} new announcement{'s' if anns != 1 else ''}")

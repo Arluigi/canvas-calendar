@@ -78,6 +78,17 @@ def sync_meetings(live: bool = False, calendar_name: str = "UIUC Assignments") -
     auth = GraphAuth(client_id=load_graph_client_id())
     adapter = OutlookAdapter(auth=auth)
     cal = adapter.ensure_calendar(calendar_name)
+    # Cache instructor names: the mail filter uses them to recognise a message
+    # from someone who actually teaches you.
+    import json as _json
+
+    from canvas_calendar.config import GRAPH_CONFIG
+
+    if GRAPH_CONFIG.exists():
+        cfg = _json.loads(GRAPH_CONFIG.read_text())
+        cfg["instructors"] = sorted({m.meeting.instructor for m in meetings if m.meeting.instructor})
+        GRAPH_CONFIG.write_text(_json.dumps(cfg, indent=2))
+
     written = sum(1 for m in meetings if adapter.upsert_recurring(cal, m))
     print(f"\nAPPLIED: {written} series written into {calendar_name!r}")
     return 0

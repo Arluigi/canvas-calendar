@@ -20,7 +20,6 @@ from canvas_calendar.config import (
 from canvas_calendar.daily import notify, token_expiry_status
 from canvas_calendar.debrief import (
     canvas_announcements,
-    canvas_conversations,
     load_last_run,
     outlook_unread,
     save_last_run,
@@ -28,6 +27,7 @@ from canvas_calendar.debrief import (
     todays_events,
 )
 from canvas_calendar.debrief_render import next_week, render, subject_line
+from canvas_calendar.mail_triage import triage
 from canvas_calendar.models import Source
 from canvas_calendar.pipeline import collect, term_courses
 from canvas_calendar.timeutil import CHICAGO
@@ -40,6 +40,13 @@ def _recipient() -> str:
     if not to:
         raise RuntimeError("set debrief_to in ~/.config/canvas-calendar/config.json")
     return to
+
+
+def _recipient_or_blank() -> str:
+    try:
+        return _recipient()
+    except RuntimeError:
+        return ""
 
 
 def gather() -> dict:
@@ -73,7 +80,11 @@ def gather() -> dict:
     announcements = attempt(
         "announcements", lambda: canvas_announcements(canvas, course_ids, since), []
     )
-    conversations = attempt("canvas inbox", lambda: canvas_conversations(canvas), [])
+    # Triage rather than list: an inbox dump is your inbox with extra steps.
+    highlights, filtered = [], []
+    if mail:
+        instructors = load_sync_options().get("instructors", [])
+        highlights, filtered = triage(mail, _recipient_or_blank(), instructors)
 
     unresolved: dict[str, list[str]] = {}
     for a in assignments:
@@ -91,8 +102,8 @@ def gather() -> dict:
         "events": events,
         "due": next_week(assignments, now),
         "announcements": announcements,
-        "conversations": conversations,
-        "mail": mail,
+        "mail": highlights if mail is not None else None,
+        "mail_filtered": filtered,
         "unresolved": unresolved,
         "token_note": token_note,
         "errors": errors,
