@@ -19,7 +19,12 @@ from pathlib import Path
 import httpx
 
 TENANT_ID = "44467e6f-462c-4ea2-823f-7800de5434e3"  # University of Illinois - Urbana
-SCOPES = "https://graph.microsoft.com/Calendars.ReadWrite offline_access openid profile"
+SCOPES = (
+    "https://graph.microsoft.com/Calendars.ReadWrite "
+    "https://graph.microsoft.com/Mail.Read "
+    "https://graph.microsoft.com/Mail.Send "
+    "offline_access openid profile"
+)
 DEFAULT_TOKEN_PATH = Path.home() / ".config" / "canvas-calendar" / "token.json"
 
 # Refresh a little early so a long sync cannot straddle an expiry.

@@ -54,6 +54,8 @@ def load_sync_options() -> dict:
         "exclude_assignment_ids": [],
         "reminder_minutes_timed": 15,
         "reminder_minutes_all_day": 1440,
+        "debrief_to": "",
+        "debrief_hour": 7,
     }
     if GRAPH_CONFIG.exists():
         defaults.update(
