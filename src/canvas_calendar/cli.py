@@ -58,7 +58,13 @@ def _sync(live: bool, course: str | None = None, force: bool = False) -> int:
     from canvas_calendar.pipeline import collect
     from canvas_calendar.state import DEFAULT_STATE_PATH, StateStore
 
-    assignments = collect()
+    applied: list[str] = []
+    assignments = collect(applied)
+    if applied:
+        print("MANUAL OVERRIDES APPLIED:")
+        for line in applied:
+            print(f"   {line}")
+        print()
     if course:
         # Narrowing the write set is how a first live run stays reversible:
         # verify formatting on one course before committing the whole term.

@@ -9,6 +9,7 @@ from canvas_calendar.canvas.client import CanvasClient
 from canvas_calendar.config import load_canvas_credentials, load_sync_options
 from canvas_calendar.models import Assignment, CourseRef, Source
 from canvas_calendar.modules import extract_dates, parse_subheader_date
+from canvas_calendar.overrides import apply_overrides, load_overrides
 from canvas_calendar.rules import Disposition, classify
 from canvas_calendar.timeutil import CHICAGO, parse_canvas_ts
 
@@ -132,7 +133,7 @@ def _walk_modules(
     return titles, events
 
 
-def collect() -> list[Assignment]:
+def collect(applied: list[str] | None = None) -> list[Assignment]:
     """Full read path against live Canvas. Used by `canvas-calendar preview`."""
     base_url, token = load_canvas_credentials()
     client = CanvasClient(base_url, token)
@@ -153,4 +154,7 @@ def collect() -> list[Assignment]:
                 continue
             a.digest_only = verdict is Disposition.DIGEST
             results.append(a)
-    return results
+
+    # Canvas is not always authoritative. Applied last so a corrected date
+    # wins over whatever Canvas or module extraction produced.
+    return apply_overrides(results, load_overrides(), applied)

@@ -51,7 +51,7 @@ class Meeting:
 
 @dataclass
 class Assignment:
-    canvas_id: int
+    canvas_id: int | str  # str only for manual additions (namespace "man-")
     name: str
     points: float
     due_at: datetime | None
