@@ -52,6 +52,33 @@ def notify(title: str, message: str, *, urgent: bool = False) -> None:
         pass
 
 
+def token_expiry_status(tokens: list[dict], now: datetime) -> tuple[int | None, str]:
+    """Days until the soonest-expiring active token, and a message.
+
+    Canvas OAuth2 refresh tokens would remove this chore entirely, but Canvas
+    developer keys are issued only by institution admins, so a student cannot
+    self-provision one. Illinois additionally blocks token create and
+    regenerate through the API. Renewal therefore stays manual -- which makes
+    advance warning the entire mitigation.
+    """
+    from canvas_calendar.timeutil import parse_canvas_ts, to_local
+
+    soonest, when = None, None
+    for t in tokens:
+        if t.get("workflow_state") not in (None, "active"):
+            continue
+        raw = t.get("expires_at")
+        if not raw:
+            return None, "token does not expire"
+        exp = parse_canvas_ts(raw)
+        days = (exp - now).days
+        if soonest is None or days < soonest:
+            soonest, when = days, exp
+    if soonest is None:
+        return None, "no active tokens found"
+    return soonest, f"Canvas token expires in {soonest} days ({to_local(when):%b %d})"
+
+
 def _log(line: str) -> None:
     LOG_DIR.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now(CHICAGO).strftime("%Y-%m-%d %H:%M:%S")
@@ -100,7 +127,25 @@ def _run(dry_run: bool) -> int:
     errors: list[str] = []
     counts = apply_plan(plan, adapter, calendar_id, store, dry_run=dry_run, errors=errors)
 
-    write_digest(plan, counts, errors, overrides_applied)
+    # Expiry is a scheduled certainty here, not an edge case. Check it every
+    # run so the failure is announced days early rather than discovered as a
+    # calendar that quietly stopped updating.
+    token_note = ""
+    try:
+        from canvas_calendar.canvas.client import CanvasClient
+        from canvas_calendar.config import load_canvas_credentials
+
+        base_url, tok = load_canvas_credentials()
+        days, token_note = token_expiry_status(
+            CanvasClient(base_url, tok).list_tokens(), datetime.now(CHICAGO)
+        )
+        if days is not None and days <= TOKEN_WARN_DAYS:
+            _log(f"WARN {token_note}")
+            notify("Canvas Calendar — token expiring", token_note, urgent=True)
+    except Exception as exc:  # noqa: BLE001 -- expiry check must never break the sync
+        token_note = f"could not check token expiry: {exc}"
+
+    write_digest(plan, counts, errors, overrides_applied, token_note)
 
     changed = counts["create"] + counts["update"] + counts["delete"]
     _log(f"ok {dict(counts)}" + (f" errors={len(errors)}" if errors else ""))
@@ -116,7 +161,7 @@ def _run(dry_run: bool) -> int:
     return 0
 
 
-def write_digest(plan, counts, errors, overrides_applied) -> Path:
+def write_digest(plan, counts, errors, overrides_applied, token_note: str = "") -> Path:
     """The digest is where everything the calendar cannot show goes.
 
     A calendar answers 'what is due'. It cannot answer 'what changed since
@@ -208,6 +253,9 @@ def write_digest(plan, counts, errors, overrides_applied) -> Path:
 
     if errors:
         lines += ["## Errors", ""] + [f"- {e}" for e in errors] + [""]
+
+    if token_note:
+        lines += ["## Credentials", "", f"- {token_note}", ""]
 
     lines += ["---", f"`{dict(counts)}`"]
 

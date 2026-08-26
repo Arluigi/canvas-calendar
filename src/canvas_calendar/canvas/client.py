@@ -45,6 +45,15 @@ class CanvasClient:
     def list_assignments(self, course_id: int) -> list[dict]:
         return self._get_all(f"/courses/{course_id}/assignments")
 
+    def list_tokens(self) -> list[dict]:
+        """The user's own access tokens, with expiry.
+
+        Illinois blocks creating and regenerating tokens through the API (both
+        403), so this read-only view is the only programmatic handle we have on
+        expiry. It is enough to guarantee the user is never surprised.
+        """
+        return self._get_all("/users/self/user_generated_tokens")
+
     def list_modules(self, course_id: int) -> list[dict]:
         return self._get_all(f"/courses/{course_id}/modules")
 

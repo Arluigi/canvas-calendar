@@ -86,3 +86,57 @@ def test_digest_is_rewritten_not_appended(tmp_path, monkeypatch):
                   tmp_path=tmp_path, monkeypatch=monkeypatch)
     assert "Second" in out
     assert "First" not in out
+
+
+def test_token_expiry_days_and_message():
+    from canvas_calendar.daily import token_expiry_status
+
+    now = datetime(2026, 9, 19, 12, tzinfo=CHICAGO)
+    days, msg = token_expiry_status(
+        [{"workflow_state": "active", "expires_at": "2026-09-24T05:00:00Z"}], now
+    )
+    assert days == 4
+    assert "4 days" in msg
+
+
+def test_token_without_expiry_is_reported_as_permanent():
+    from canvas_calendar.daily import token_expiry_status
+
+    days, msg = token_expiry_status(
+        [{"workflow_state": "active", "expires_at": None}], datetime.now(CHICAGO)
+    )
+    assert days is None
+    assert "does not expire" in msg
+
+
+def test_soonest_expiry_wins():
+    from canvas_calendar.daily import token_expiry_status
+
+    now = datetime(2026, 9, 1, tzinfo=CHICAGO)
+    days, _ = token_expiry_status(
+        [
+            {"workflow_state": "active", "expires_at": "2026-12-01T05:00:00Z"},
+            {"workflow_state": "active", "expires_at": "2026-09-11T05:00:00Z"},
+        ],
+        now,
+    )
+    assert days == 10
+
+
+def test_inactive_tokens_are_ignored():
+    from canvas_calendar.daily import token_expiry_status
+
+    days, msg = token_expiry_status(
+        [{"workflow_state": "deleted", "expires_at": "2026-09-02T05:00:00Z"}],
+        datetime(2026, 9, 1, tzinfo=CHICAGO),
+    )
+    assert days is None and "no active tokens" in msg
+
+
+def test_credentials_section_appears_in_digest(tmp_path, monkeypatch):
+    monkeypatch.setattr("canvas_calendar.daily.LOG_DIR", tmp_path)
+    monkeypatch.setattr("canvas_calendar.daily.DIGEST_PATH", tmp_path / "digest.md")
+    write_digest([], Counter(), [], [], "Canvas token expires in 4 days (Sep 24)")
+    out = (tmp_path / "digest.md").read_text()
+    assert "## Credentials" in out
+    assert "4 days" in out

@@ -31,6 +31,21 @@ def render_preview(assignments: list[Assignment]) -> str:
     return "\n".join(lines)
 
 
+RENEWAL_STEPS = """
+Renew (about a minute):
+  1. canvas.illinois.edu -> Account -> Settings -> + New Access Token
+  2. Purpose: canvas-calendar. Copy the value now; Canvas shows it once.
+  3. In a terminal:
+       cd ~/code/canvas-mcp
+       NEW_CANVAS_TOKEN='paste-here' node scripts/rotate-canvas-token.mjs
+
+Canvas OAuth2 refresh tokens would remove this chore entirely, but Canvas
+developer keys are issued only by institution admins, and Illinois blocks
+both token creation and regeneration through the API (verified: HTTP 403 on
+each). Renewal is therefore manual by policy, not by design.
+"""
+
+
 def render_plan(plan) -> str:
     """Human-readable diff plan. Shown before anything is written."""
     from canvas_calendar.diff import Action
@@ -96,7 +111,7 @@ def _sync(live: bool, course: str | None = None, force: bool = False) -> int:
 
 def main() -> int:
     parser = argparse.ArgumentParser(prog="canvas-calendar")
-    parser.add_argument("command", choices=["preview", "sync", "meetings", "daily", "digest"])
+    parser.add_argument("command", choices=["preview", "sync", "meetings", "daily", "digest", "token"])
     parser.add_argument(
         "--live",
         action="store_true",
@@ -114,6 +129,20 @@ def main() -> int:
     )
     args = parser.parse_args()
 
+    if args.command == "token":
+        from datetime import datetime
+
+        from canvas_calendar.canvas.client import CanvasClient
+        from canvas_calendar.config import load_canvas_credentials
+        from canvas_calendar.daily import token_expiry_status
+        from canvas_calendar.timeutil import CHICAGO
+
+        b, t = load_canvas_credentials()
+        days, msg = token_expiry_status(CanvasClient(b, t).list_tokens(), datetime.now(CHICAGO))
+        print(msg)
+        if days is not None and days <= 14:
+            print(RENEWAL_STEPS)
+        return 0
     if args.command == "daily":
         from canvas_calendar.daily import run
 
