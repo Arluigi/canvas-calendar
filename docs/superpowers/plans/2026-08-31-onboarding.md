@@ -258,17 +258,21 @@ Create `src/canvas_calendar/data/terms.json`:
                 "2026-11-24", "2026-11-25", "2026-11-26", "2026-11-27",
                 "2026-11-28", "2026-11-29"]},
   {"year": 2027, "season": "spring", "start": "2027-01-19", "end": "2027-05-05",
-   "holidays": ["2027-01-18", "2027-03-20", "2027-03-21", "2027-03-22",
-                "2027-03-23", "2027-03-24", "2027-03-25", "2027-03-26",
-                "2027-03-27", "2027-03-28"]}
+   "holidays": ["2027-03-13", "2027-03-14", "2027-03-15", "2027-03-16",
+                "2027-03-17", "2027-03-18", "2027-03-19", "2027-03-20",
+                "2027-03-21"]}
 ]
 ```
 
-The Spring 2027 dates are a **placeholder and must be confirmed against the
-UIUC registrar calendar before release** — they are the first thing a spring
-installer would silently get wrong. Verify at
-`https://registrar.illinois.edu/academic-calendars/` and correct them in this
-step, then remove this paragraph.
+Spring 2027 verified against the UIUC registrar on 2026-08-31: instruction
+runs Jan 19 – May 5, spring break Mar 13–21 (classes resume Mar 22). **MLK Day
+(Mon Jan 18 2027) falls before the first day of instruction**, so it is not an
+in-term non-instruction day and is deliberately absent. Weekend dates are kept
+in the list for consistency with Fall; `excluded_dates` filters by weekday, so
+they are inert.
+
+The registrar marks these "tentative until closer to the beginning of the
+semester". Re-check before a spring install.
 
 In `pyproject.toml`, ensure the data file ships:
 
@@ -825,5 +829,5 @@ CLI all read the same text."
 
 - **Never run `canvas-calendar setup` non-interactively on the author's machine.** It would prompt for a Canvas token and could overwrite `calendar_backend`. `write_config` reports overwrites, but the safe test is the unit tests, which write only to `tmp_path`.
 - **Do not run `install-agents` on the author's machine.** Their agents already exist under `com.aryan.*`; adding the new labels would run every sync twice.
-- The Spring 2027 term dates in `terms.json` are unverified placeholders. Confirm them against the UIUC registrar before this ships, or the first spring installer gets a silently wrong meeting schedule — the exact class of bug this project is built to avoid.
+- Spring 2027 dates in `terms.json` were verified against the registrar on 2026-08-31, but are marked "tentative" by the university. Re-check before a spring install.
 - `doctor` must never raise. Every check catches broadly and reports; a crashing diagnostic is worse than none.

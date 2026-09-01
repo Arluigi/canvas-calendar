@@ -181,9 +181,15 @@ before the grant, its first scheduled run stalls on a prompt nobody sees. This
 makes the grant a required, ordered step of the wizard rather than something
 left to first run.
 
-**3. Does calendar creation work? YES** on both CalDAV/iCloud and Exchange.
-This contradicts the original prediction that iCloud would allow it and Google
-would not; iCloud allows it outright.
+**3. Does calendar creation work? YES on iCloud and Exchange, NO on Google.**
+Google's CalDAV returns `EKErrorDomain Code=17 "That account does not allow
+calendars to be added or removed."` — tested with a fresh store, so this is
+genuine and not the stale-handle artifact described below. iCloud and Exchange
+both allow creation outright.
+
+*Design consequence:* `ensure_calendar` must treat creation failure as an
+expected path for Google, not an error. Setup tells the user to create the
+calendar at calendar.google.com and re-run; the tool then finds it by title.
 
 *Method note:* an initial run reported `EKErrorDomain Code=17 "That account
 does not allow calendars to be added"` for iCloud. That was an artifact —
@@ -194,17 +200,10 @@ objects across a `reset()`.
 
 ### Remaining gap
 
-**No Google account is configured on the author's Mac**, so Google's CalDAV
-was not exercised for either the `URL` round-trip or calendar creation. Both
-passed on iCloud, which is also CalDAV, so the mechanism is sound in
-principle — but Google's CalDAV is known to be more restrictive than iCloud's,
-and calendar creation in particular is the likeliest thing for it to refuse.
-
-This must be tested on a machine with a Google account before the EventKit
-adapter is relied on for Google users. Until then the wizard should treat
-Google calendar creation as *possibly* unavailable and fall back to asking the
-user to create the calendar at calendar.google.com — cheap to keep, and the
-only untested path.
+None. Google was linked to the author's Mac on 2026-08-31 and tested directly:
+the `URL` round-trip **survived** on Google CalDAV, and calendar creation
+**refused**, as recorded above. All three source types — CalDAV/iCloud,
+Exchange, and Google CalDAV — are now measured rather than assumed.
 
 ### Verified incidentally
 

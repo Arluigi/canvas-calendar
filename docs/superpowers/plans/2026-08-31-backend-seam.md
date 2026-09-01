@@ -1337,4 +1337,4 @@ appears in list_uids, since that is what would let prune delete it."
 - The EventKit adapter is imported lazily inside `_build_eventkit`, so nothing in the outlook path can be broken by an EventKit error.
 - If a test hangs for 60s and then raises `CalendarAccessDenied`, macOS is showing a permission prompt somewhere — answer it, then re-run.
 - Do not add a `backend_id` column to `state.db`. The uid→event index makes it unnecessary, and migrating a live database with 151 rows for no functional gain is a bad trade.
-- Google's CalDAV is untested (no Google account was available). If `_create_calendar` fails on a Google source, that is the expected gap, and the message already tells the user to create it manually.
+- **Google's CalDAV refuses calendar creation** (`EKErrorDomain Code=17`), confirmed by direct test on 2026-08-31. `_create_calendar` raising `CalendarNotWritable` there is the expected path, not a bug — its message already tells the user to create the calendar in that account and re-run. iCloud and Exchange both allow creation. Writing *events* works on all three.
