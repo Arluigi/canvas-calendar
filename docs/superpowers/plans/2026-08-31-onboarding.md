@@ -34,7 +34,7 @@ Written first because it is what an agent runs when a friend says "it's broken",
 - Consumes: `load_sync_options`, `load_term`, `load_canvas_credentials`, `make_adapter`, `CanvasClient`
 - Produces: `run_checks() -> list[Check]` where `Check` is a dataclass of `name: str`, `ok: bool`, `detail: str`, `fix: str`; `render(checks) -> str`; `main() -> int` returning 0 when every check passes, 1 otherwise
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Create `tests/test_doctor.py`:
 
@@ -71,7 +71,7 @@ def test_term_check_fails_when_today_is_out_of_range():
     assert "outside" in stale.detail
 ```
 
-- [ ] **Step 2: Run and confirm they fail**
+- [x] **Step 2: Run and confirm they fail**
 
 ```bash
 uv run pytest tests/test_doctor.py -v
@@ -79,7 +79,7 @@ uv run pytest tests/test_doctor.py -v
 
 Expected: `ModuleNotFoundError: No module named 'canvas_calendar.doctor'`.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 Create `src/canvas_calendar/doctor.py`:
 
@@ -197,7 +197,7 @@ def main() -> int:
     return 0 if all(c.ok for c in checks) else 1
 ```
 
-- [ ] **Step 4: Wire the command**
+- [x] **Step 4: Wire the command**
 
 In `src/canvas_calendar/cli.py`, add `"doctor"` and `"setup"` to the
 `choices` list on line 114, and add a branch alongside the other early
@@ -210,7 +210,7 @@ dispatches in `main()`:
         return doctor_main()
 ```
 
-- [ ] **Step 5: Run the tests, then run it for real**
+- [x] **Step 5: Run the tests, then run it for real**
 
 ```bash
 uv run pytest tests/test_doctor.py -v
@@ -221,7 +221,7 @@ Expected: 3 tests pass. The live run shows four ✓ lines — Canvas token valid
 term in range, outlook backend resolving `UIUC Assignments`, and two agents
 loaded with last exit 0.
 
-- [ ] **Step 6: Full suite, lint, commit**
+- [x] **Step 6: Full suite, lint, commit**
 
 ```bash
 uv run pytest -q && uv run ruff check src tests
@@ -247,7 +247,7 @@ later. This turns each into one line plus the command that fixes it."
 - Consumes: `Check`/`run_checks` from Task 1, `EventKitAdapter`, `device_login`
 - Produces: `write_config(updates: dict, *, path) -> list[str]` returning a description of each change; `choose_term(today) -> dict`; `main() -> int`
 
-- [ ] **Step 1: Ship the term table**
+- [x] **Step 1: Ship the term table**
 
 Create `src/canvas_calendar/data/terms.json`:
 
@@ -284,7 +284,7 @@ packages = ["src/canvas_calendar"]
 "src/canvas_calendar/data" = "canvas_calendar/data"
 ```
 
-- [ ] **Step 2: Write the failing tests**
+- [x] **Step 2: Write the failing tests**
 
 Create `tests/test_setup_wizard.py`:
 
@@ -333,7 +333,7 @@ def test_write_config_creates_the_file_when_absent(tmp_path):
     assert json.loads(p.read_text())["calendar_backend"] == "eventkit"
 ```
 
-- [ ] **Step 3: Run and confirm they fail**
+- [x] **Step 3: Run and confirm they fail**
 
 ```bash
 uv run pytest tests/test_setup_wizard.py -v
@@ -341,7 +341,7 @@ uv run pytest tests/test_setup_wizard.py -v
 
 Expected: `ModuleNotFoundError: No module named 'canvas_calendar.setup_wizard'`.
 
-- [ ] **Step 4: Implement the testable core**
+- [x] **Step 4: Implement the testable core**
 
 Create `src/canvas_calendar/setup_wizard.py`:
 
@@ -402,7 +402,7 @@ def write_config(updates: dict, *, path: Path | None = None) -> list[str]:
     return changes
 ```
 
-- [ ] **Step 5: Run the tests and confirm they pass**
+- [x] **Step 5: Run the tests and confirm they pass**
 
 ```bash
 uv run pytest tests/test_setup_wizard.py -v
@@ -410,7 +410,7 @@ uv run pytest tests/test_setup_wizard.py -v
 
 Expected: 5 passed.
 
-- [ ] **Step 6: Add the interactive flow**
+- [x] **Step 6: Add the interactive flow**
 
 Append to `src/canvas_calendar/setup_wizard.py`:
 
@@ -522,7 +522,7 @@ seam plan has not already added that, extend its resolution order to
 `CANVAS_API_TOKEN` env var, then `credentials.json`, then the legacy
 `~/code/canvas-mcp/.env` path.
 
-- [ ] **Step 7: Verify setup cannot damage the author's config**
+- [x] **Step 7: Verify setup cannot damage the author's config**
 
 ```bash
 cp ~/.config/canvas-calendar/config.json /tmp/cfg.before
@@ -532,7 +532,7 @@ diff /tmp/cfg.before ~/.config/canvas-calendar/config.json && echo "config untou
 
 Expected: no diff. The tests write only to `tmp_path`.
 
-- [ ] **Step 8: Full suite, lint, commit**
+- [x] **Step 8: Full suite, lint, commit**
 
 ```bash
 uv run pytest -q && uv run ruff check src tests
@@ -563,7 +563,7 @@ directory.
 - Consumes: nothing
 - Produces: `render_plist(template: str, *, binary: str, label: str) -> str`; `install() -> int`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/test_agents.py`:
 
@@ -587,7 +587,7 @@ def test_label_is_not_user_specific():
     assert "aryan" not in LABEL_SYNC.lower()
 ```
 
-- [ ] **Step 2: Run and confirm it fails**
+- [x] **Step 2: Run and confirm it fails**
 
 ```bash
 uv run pytest tests/test_agents.py -v
@@ -595,7 +595,7 @@ uv run pytest tests/test_agents.py -v
 
 Expected: `ModuleNotFoundError: No module named 'canvas_calendar.agents'`.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 Create `src/canvas_calendar/agents.py`:
 
@@ -662,7 +662,7 @@ def _uid() -> int:
 Update both templates to use `{{BINARY}}` and `{{LABEL}}` placeholders and
 rename them, dropping the `com.aryan.` prefix from the filenames.
 
-- [ ] **Step 4: Run tests, wire the command, verify without installing**
+- [x] **Step 4: Run tests, wire the command, verify without installing**
 
 Add `"install-agents"` to the `choices` list and a dispatch branch.
 
@@ -679,14 +679,14 @@ Expected: 2 tests pass. The second command **refuses**, because `uv run`
 resolves to the repo `.venv` — which is exactly the guard working. Running
 `~/.local/bin/canvas-calendar` instead should print a real path.
 
-- [ ] **Step 5: Do not re-install the author's agents**
+- [x] **Step 5: Do not re-install the author's agents**
 
 The author's agents are already installed under the `com.aryan.*` labels and
 working. Installing the new labels would double every scheduled run. Leave
 them; the rename applies to new installs only. Note this in `AGENTS.md` in
 Task 4.
 
-- [ ] **Step 6: Full suite, lint, commit**
+- [x] **Step 6: Full suite, lint, commit**
 
 ```bash
 uv run pytest -q && uv run ruff check src tests
@@ -711,13 +711,13 @@ would otherwise decide what runs at 07:15."
 - Consumes: everything above
 - Produces: nothing consumed by later tasks
 
-- [ ] **Step 1: Move the content**
+- [x] **Step 1: Move the content**
 
 ```bash
 git mv CLAUDE.md AGENTS.md
 ```
 
-- [ ] **Step 2: Add the install section**
+- [x] **Step 2: Add the install section**
 
 Append to `AGENTS.md`:
 
@@ -753,7 +753,7 @@ calendar.google.com first and re-run.
 scheduled run. Leave the existing agents in place.
 ```
 
-- [ ] **Step 3: Symlink the other two**
+- [x] **Step 3: Symlink the other two**
 
 ```bash
 ln -s AGENTS.md CLAUDE.md
@@ -771,7 +771,7 @@ git ls-files -s CLAUDE.md GEMINI.md
 Expected: mode `120000` on both. If it shows `100644`, git stored a copy —
 remove and re-add with `git update-index --add --cacheinfo 120000`.
 
-- [ ] **Step 4: Write the installer**
+- [x] **Step 4: Write the installer**
 
 Create `install.sh`:
 
@@ -801,7 +801,7 @@ chmod +x install.sh
 bash -n install.sh && echo "syntax OK"
 ```
 
-- [ ] **Step 5: Confirm the symlinks resolve and content survived**
+- [x] **Step 5: Confirm the symlinks resolve and content survived**
 
 ```bash
 head -3 CLAUDE.md && head -3 GEMINI.md
@@ -812,7 +812,7 @@ Expected: both symlinks print the `AGENTS.md` heading, and the gotchas
 section is present exactly once — the operations manual must not have been
 lost in the move.
 
-- [ ] **Step 6: Full suite, lint, commit**
+- [x] **Step 6: Full suite, lint, commit**
 
 ```bash
 uv run pytest -q && uv run ruff check src tests
