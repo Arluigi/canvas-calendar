@@ -84,3 +84,26 @@ def test_missing_token_names_the_setup_command(tmp_path, monkeypatch):
     monkeypatch.setattr(config, "CREDENTIALS", tmp_path / "absent.json")
     with pytest.raises(RuntimeError, match="canvas-calendar setup"):
         config.load_canvas_credentials(env_path=tmp_path / "absent.txt")
+
+
+def test_client_id_falls_back_to_the_shipped_default(tmp_path, monkeypatch):
+    """A fresh install choosing the Outlook backend must not dead-end."""
+    monkeypatch.delenv("CANVAS_CALENDAR_CLIENT_ID", raising=False)
+    monkeypatch.setattr(config, "GRAPH_CONFIG", tmp_path / "absent.json")
+    assert config.load_graph_client_id() == config.DEFAULT_CLIENT_ID
+
+
+def test_client_id_prefers_config_over_the_default(tmp_path, monkeypatch):
+    import json as _json
+
+    monkeypatch.delenv("CANVAS_CALENDAR_CLIENT_ID", raising=False)
+    p = tmp_path / "config.json"
+    p.write_text(_json.dumps({"client_id": "their-own-app"}))
+    monkeypatch.setattr(config, "GRAPH_CONFIG", p)
+    assert config.load_graph_client_id() == "their-own-app"
+
+
+def test_client_id_env_var_wins(tmp_path, monkeypatch):
+    monkeypatch.setenv("CANVAS_CALENDAR_CLIENT_ID", "from-env")
+    monkeypatch.setattr(config, "GRAPH_CONFIG", tmp_path / "absent.json")
+    assert config.load_graph_client_id() == "from-env"

@@ -48,9 +48,21 @@ def load_canvas_credentials(env_path: Path | None = None) -> tuple[str, str]:
 GRAPH_CONFIG = Path.home() / ".config" / "canvas-calendar" / "config.json"
 
 
+# Entra application (client) id, registered in the University of Illinois
+# tenant. NOT a secret: this is a public client with no client secret, which
+# is exactly why device-code auth is safe. Shipping it as a default is what
+# lets a new UIUC user pick the Outlook backend without registering their own
+# app -- each user consents individually and receives their own tokens.
+DEFAULT_CLIENT_ID = "e2fcf5b3-2551-43c6-a844-8b2493c166b3"
+
+
 def load_graph_client_id() -> str:
-    """Entra application (client) id. Not a secret -- the app is a public
-    client, which is precisely why device-code auth is safe here."""
+    """Entra application (client) id.
+
+    Order: environment, then config.json, then the shipped default. Without
+    the default, a fresh install choosing the Outlook backend dead-ends on a
+    RuntimeError during setup.
+    """
     import json
 
     env = os.environ.get("CANVAS_CALENDAR_CLIENT_ID")
@@ -60,9 +72,7 @@ def load_graph_client_id() -> str:
         cid = json.loads(GRAPH_CONFIG.read_text()).get("client_id")
         if cid:
             return cid
-    raise RuntimeError(
-        f"no Graph client id -- set CANVAS_CALENDAR_CLIENT_ID or write {GRAPH_CONFIG}"
-    )
+    return DEFAULT_CLIENT_ID
 
 
 def load_term():

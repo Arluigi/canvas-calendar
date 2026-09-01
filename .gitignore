@@ -5,3 +5,5 @@ __pycache__/
 state.db
 digest.md
 .DS_Store
+dist/
+.pytest_cache/

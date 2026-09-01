@@ -25,6 +25,10 @@ this; they all read `AGENTS.md`, which has the same steps written for them.
 already added in System Settings → Internet Accounts. A Google account that
 only exists in a browser tab is invisible to the tool.
 
+The Outlook backend uses a public Entra client id shipped in the source — no
+secret, no app registration of your own. You consent individually at first
+sign-in and get your own tokens.
+
 ## Which calendar?
 
 Pick `eventkit` at setup and it writes through the macOS Calendar app, which

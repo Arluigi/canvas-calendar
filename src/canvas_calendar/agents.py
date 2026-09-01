@@ -49,13 +49,17 @@ def resolve_binary() -> str:
 
 
 def _templates_dir() -> Path:
-    """deploy/ lives beside the package in a checkout, and is not shipped in
-    the wheel -- so fall back to the repo root when running from source."""
-    here = Path(__file__).resolve()
-    for candidate in (here.parent / "deploy", here.parent.parent.parent / "deploy"):
-        if candidate.is_dir():
-            return candidate
-    raise FileNotFoundError("could not locate the deploy/ plist templates")
+    """Templates ship inside the package.
+
+    They used to live in deploy/, which is not included in the wheel -- so a
+    `uv tool install` from git produced a tool whose install-agents crashed
+    with FileNotFoundError. Keeping them in package data is what makes the
+    command work for someone who never cloned the repo.
+    """
+    d = Path(__file__).resolve().parent / "data"
+    if not d.is_dir():
+        raise FileNotFoundError(f"plist templates missing from the package: {d}")
+    return d
 
 
 def install() -> int:

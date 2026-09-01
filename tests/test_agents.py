@@ -51,3 +51,21 @@ def test_resolve_binary_refuses_a_development_checkout(path, monkeypatch):
 def test_resolve_binary_accepts_an_installed_path(monkeypatch):
     monkeypatch.setattr("shutil.which", lambda _: "/Users/x/.local/bin/canvas-calendar")
     assert resolve_binary().endswith("canvas-calendar")
+
+
+def test_plist_templates_ship_inside_the_package():
+    """They lived in deploy/, which the wheel does not include -- so a
+    `uv tool install` produced a tool whose install-agents crashed."""
+    from canvas_calendar.agents import _templates_dir
+
+    names = {p.name for p in _templates_dir().glob("*.plist.template")}
+    assert names == {"canvas-calendar.plist.template", "canvas-debrief.plist.template"}
+
+
+def test_rendered_plists_have_no_placeholders_left():
+    from canvas_calendar.agents import _templates_dir
+
+    for tmpl in _templates_dir().glob("*.plist.template"):
+        out = render_plist(tmpl.read_text(), binary="/x/bin/cc",
+                           label=LABEL_SYNC, home="/Users/x")
+        assert "{{" not in out, f"{tmpl.name} kept a placeholder"
