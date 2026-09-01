@@ -160,20 +160,59 @@ currently surfaces as a JSON decode error instead of the clean exit-code-2
 path the rest of the tool has. It moves onto `CanvasClient`. Its unrelated
 side effect — writing `instructors` into config mid-sync — is left alone.
 
-### Open questions for the spike
+### Spike results (run 2026-08-31 on macOS 26.5.2)
 
-Both concern CalDAV round-tripping and must be answered before the adapter is
-built on top of them:
+**1. Does the `URL` property survive a save/refetch? YES**, on both source
+types available for testing. `x-canvas-calendar:cc-spike-12345` came back
+byte-identical from a genuinely fresh `EKEventStore` on CalDAV/iCloud and on
+Exchange. The `notes` fallback is not needed for those two. **Google remains
+untested** — see the gap below.
 
-1. Does Google's CalDAV preserve the iCalendar `URL` property? If not, the
-   last line of `notes` is the fallback carrier for the UID.
-2. Can a LaunchAgent obtain macOS Calendar (TCC) permission headlessly?
-   Interactive Terminal access is straightforward; a background daemon is not
-   assumed to work. If it cannot, the fallback is a login-triggered agent
-   rather than a timed one — a degradation, not a redesign.
-3. Does Google's CalDAV permit calendar creation? Expected to be no. If so,
-   setup instructs the user to create the calendar at calendar.google.com
-   first.
+**2. Can a LaunchAgent obtain Calendar (TCC) permission? YES, with one
+condition.** A background agent has its own TCC identity, separate from the
+Terminal's: the first run reported `authorizationStatus = 0` (not determined)
+and blocked ~37s on an interactive prompt. Once granted, the status persists
+as `3` (full access) and subsequent agent runs are instant, enumerating all 12
+calendars with a clean exit.
+
+*Design consequence:* `setup` must trigger the permission grant
+**interactively**, while the user is present. If the LaunchAgent is installed
+before the grant, its first scheduled run stalls on a prompt nobody sees. This
+makes the grant a required, ordered step of the wizard rather than something
+left to first run.
+
+**3. Does calendar creation work? YES** on both CalDAV/iCloud and Exchange.
+This contradicts the original prediction that iCloud would allow it and Google
+would not; iCloud allows it outright.
+
+*Method note:* an initial run reported `EKErrorDomain Code=17 "That account
+does not allow calendars to be added"` for iCloud. That was an artifact —
+`EKEventStore.reset()` invalidates cached `EKSource` objects, so the creation
+was attempted against a stale handle. Re-running with a fresh store per phase
+gave ALLOWED. Any future EventKit work must not reuse source or calendar
+objects across a `reset()`.
+
+### Remaining gap
+
+**No Google account is configured on the author's Mac**, so Google's CalDAV
+was not exercised for either the `URL` round-trip or calendar creation. Both
+passed on iCloud, which is also CalDAV, so the mechanism is sound in
+principle — but Google's CalDAV is known to be more restrictive than iCloud's,
+and calendar creation in particular is the likeliest thing for it to refuse.
+
+This must be tested on a machine with a Google account before the EventKit
+adapter is relied on for Google users. Until then the wizard should treat
+Google calendar creation as *possibly* unavailable and fall back to asking the
+user to create the calendar at calendar.google.com — cheap to keep, and the
+only untested path.
+
+### Verified incidentally
+
+`UIUC Assignments` is visible to EventKit as a writable **Exchange** calendar
+on the `School` source — the same calendar the Graph adapter writes to today.
+An EventKit backend could therefore manage the author's existing calendar
+directly, with no Graph dependency at all. Not acted on: the Outlook path
+works, and the debrief still requires Graph for `Mail.Send`.
 
 ## Section 3 — Configuration
 
@@ -313,8 +352,10 @@ independently shippable and each leaving the tool working:
    config, install location, plists, and a branch merge. Closes an existing
    hazard and should not wait for anything.
 3. **Portability** (Sections 2–4). The adapter seam, config schema, EventKit
-   adapter, setup wizard and install story. Gated on the three spike questions
-   in Section 2 being answered first.
+   adapter, setup wizard and install story. The three spike questions in
+   Section 2 were answered on 2026-08-31 and all three passed; the only
+   untested path is Google's CalDAV, for want of a Google account to test
+   against. Ready to plan.
 
 Plans 1 and 2 are independent of each other and of 3. Plan 3 assumes both.
 
