@@ -104,7 +104,10 @@ def _sync(live: bool, course: str | None = None, force: bool = False) -> int:
 
 def main() -> int:
     parser = argparse.ArgumentParser(prog="canvas-calendar")
-    parser.add_argument("command", choices=["preview", "sync", "meetings", "daily", "digest", "token", "debrief", "login"])
+    parser.add_argument("command", choices=[
+            "preview", "sync", "meetings", "daily", "digest", "token",
+            "debrief", "login", "doctor", "setup", "install-agents",
+        ])
     parser.add_argument(
         "--live",
         action="store_true",
@@ -122,6 +125,10 @@ def main() -> int:
     )
     args = parser.parse_args()
 
+    if args.command == "doctor":
+        from canvas_calendar.doctor import main as doctor_main
+
+        return doctor_main()
     if args.command == "login":
         from canvas_calendar.calendars.device_login import device_login
 
