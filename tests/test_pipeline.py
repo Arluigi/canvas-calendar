@@ -1,7 +1,12 @@
 from datetime import date
 
 from canvas_calendar.models import Source
-from canvas_calendar.pipeline import build_assignments, resolve_undated, term_courses
+from canvas_calendar.pipeline import (
+    apply_completion_policy,
+    build_assignments,
+    resolve_undated,
+    term_courses,
+)
 
 
 def test_skips_non_term_courses():
@@ -102,3 +107,16 @@ def test_completed_assignments_keep_their_due_date():
     a = build_assignments(raw, course="MCB 244")[0]
     assert a.completed is True
     assert a.due_at is not None
+
+
+def test_clear_completed_false_keeps_events():
+    """The toggle must clear the flag, not filter the item out."""
+    raw = [{"id": 1, "name": "done", "points_possible": 1,
+            "due_at": "2026-09-01T04:59:00Z",
+            "submission": {"workflow_state": "graded", "score": 5.0}}]
+    items = build_assignments(raw, course="MCB 244")
+    assert items[0].completed is True
+
+    kept = apply_completion_policy(items, clear_completed=False)
+    assert kept[0].completed is False
+    assert len(kept) == 1, "the item stays in the fetch; only the flag clears"

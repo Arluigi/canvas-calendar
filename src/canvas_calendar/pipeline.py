@@ -135,11 +135,27 @@ def _walk_modules(
     return titles, events
 
 
+def apply_completion_policy(
+    items: list[Assignment], *, clear_completed: bool
+) -> list[Assignment]:
+    """Honour the `clear_completed` config key.
+
+    Clears the flag rather than dropping the item: an assignment filtered out
+    of the fetch would be pruned from the calendar, which is the opposite of
+    what disabling this feature should do.
+    """
+    if not clear_completed:
+        for a in items:
+            a.completed = False
+    return items
+
+
 def collect(applied: list[str] | None = None) -> list[Assignment]:
     """Full read path against live Canvas. Used by `canvas-calendar preview`."""
     base_url, token = load_canvas_credentials()
     client = CanvasClient(base_url, token)
-    exclude = set(load_sync_options()["exclude_assignment_ids"])
+    opts = load_sync_options()
+    exclude = set(opts["exclude_assignment_ids"])
     results: list[Assignment] = []
 
     for course in term_courses(client.list_courses()):
@@ -156,6 +172,8 @@ def collect(applied: list[str] | None = None) -> list[Assignment]:
                 continue
             a.digest_only = verdict is Disposition.DIGEST
             results.append(a)
+
+    results = apply_completion_policy(results, clear_completed=opts["clear_completed"])
 
     # Canvas is not always authoritative. Applied last so a corrected date
     # wins over whatever Canvas or module extraction produced.

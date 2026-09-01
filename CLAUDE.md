@@ -38,6 +38,10 @@ canvas-calendar login              # Graph device-code auth (after scope changes
   occurrences are deleted after the series exists.
 - **Timed events need local wall time + a Windows zone name.** A UTC instant
   drifts every event across the Nov 1 DST change.
+- **Bare `graded` is not completion.** MCB 436's polls are `graded` with no
+  score and no `submitted_at` — a gradebook placeholder, not work done.
+  `completion.py` requires corroboration, and the digest names everything it
+  clears so a false positive is visible before the work is missed.
 - **Canvas is not authoritative.** `~/.config/canvas-calendar/overrides.json`
   holds corrections; every one is reported on each run.
 

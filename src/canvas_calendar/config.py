@@ -56,6 +56,7 @@ def load_sync_options() -> dict:
         "reminder_minutes_all_day": 1440,
         "debrief_to": "",
         "debrief_hour": 7,
+        "clear_completed": True,
     }
     if GRAPH_CONFIG.exists():
         defaults.update(
