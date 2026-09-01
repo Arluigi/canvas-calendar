@@ -17,7 +17,7 @@
 - The UID prefix is `cc-` and the format is `cc-<namespace><id>`. It must not change. Every row in `state.db` and every live Outlook event depends on it.
 - Exit codes: 0 clean, 1 apply errors, 2 Canvas token expired, 3 Outlook auth failed.
 - No behaviour change is acceptable in this plan. Every verification step asserts *zero* calendar writes.
-- Never run `sync --live` in this plan. Dry runs only.
+- Never invoke `sync --live` by hand. Every manual verification is a dry run. The single exception is Task 5's `launchctl kickstart`, which runs the real `daily --live` scheduled job — that is the point of the task, and it is expected to be a no-op. If it is not a no-op, stop.
 
 ---
 
@@ -79,11 +79,27 @@ Expected: `config OK, 11 keys` — and no assertion error.
 
 - [ ] **Step 4: Verify the running tool is unaffected**
 
+The test is **differential**, not absolute. Canvas drifts on its own — an
+instructor moving a due date produces a legitimate pending UPDATE that has
+nothing to do with this change. Comparing against zero would flag that as a
+regression. Compare the plan before and after instead:
+
 ```bash
-uv run canvas-calendar sync 2>&1 | tail -1
+cp ~/.config/canvas-calendar/config.json ~/.config/canvas-calendar/config.json.with-new-keys
+cp ~/.config/canvas-calendar/config.json.pre-isolation ~/.config/canvas-calendar/config.json
+uv run canvas-calendar sync 2>&1 | tail -1          # baseline
+cp ~/.config/canvas-calendar/config.json.with-new-keys ~/.config/canvas-calendar/config.json
+uv run canvas-calendar sync 2>&1 | tail -1          # after
 ```
 
-Expected: a DRY RUN line with `create`, `update` and `delete` all absent or zero. Only `skip` and `noop` counts.
+Expected: the two count lines are **identical**. `load_sync_options()` filters
+config through a known-key allowlist, so the added keys cannot reach any code
+path; this step proves that rather than assuming it.
+
+Observed on 2026-08-31: both runs reported
+`{'skip': 30, 'noop': 158, 'update': 2}`. The two updates are MCB 436's
+"Lecture 2 - Specific Activity" Ebola homework items, whose dates the
+instructor moved — genuine drift, applied by the scheduled run in Task 5.
 
 ---
 
