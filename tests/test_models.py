@@ -1,5 +1,6 @@
 import pytest
 
+from canvas_calendar.calendars.base import UID_PREFIX, assert_ours
 from canvas_calendar.models import Assignment, CourseRef, Meeting, Source
 
 
@@ -66,3 +67,28 @@ def test_uid_prefix_is_stable():
     assert Assignment(
         canvas_id=1605622, name="Wk1", points=3.0, due_at=None, course="MCB 364"
     ).uid.startswith("cc-")
+
+
+@pytest.mark.parametrize(
+    "canvas_id,namespace,expected",
+    [
+        (1652210, "", "cc-1652210"),  # Canvas assignment
+        (5440557, "mi-", "cc-mi-5440557"),  # module item / SubHeader event
+        ("mcb320-quiz1", "man-", "cc-man-mcb320-quiz1"),  # manual addition
+    ],
+)
+def test_uid_format_is_frozen(canvas_id, namespace, expected):
+    """Live calendar events and every state.db row key off this exact shape.
+    Changing it orphans all of them silently, which is the one failure mode
+    this project exists to prevent."""
+    a = Assignment(
+        canvas_id=canvas_id,
+        name="x",
+        points=0.0,
+        due_at=None,
+        course="MCB 320",
+        namespace=namespace,
+    )
+    assert a.uid == expected
+    assert a.uid.startswith(UID_PREFIX)
+    assert_ours(a.uid)
