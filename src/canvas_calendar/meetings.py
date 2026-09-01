@@ -16,17 +16,15 @@ from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
 
 from canvas_calendar.models import Meeting
+from canvas_calendar.terms import DEFAULT_TERM, Term
 
 _CRN = re.compile(r"CRN(\d{5,6})")
 
-# Fall 2026, University of Illinois Urbana-Champaign registrar calendar.
-# Cross-checked against MCB 320's module titles, which jump November 20 -> 30.
-TERM_START = date(2026, 8, 24)
-TERM_END = date(2026, 12, 9)
-NON_INSTRUCTION: list[date] = [
-    date(2026, 9, 7),  # Labor Day
-    *[date(2026, 11, d) for d in range(21, 30)],  # Fall Break, Nov 21-29
-]
+# Retained as module-level aliases so existing callers and tests keep working.
+# The term itself now lives in terms.py and is overridable from config.
+TERM_START = DEFAULT_TERM.start
+TERM_END = DEFAULT_TERM.end
+NON_INSTRUCTION: list[date] = list(DEFAULT_TERM.holidays)
 
 # Graph wants lowercase English day names in its recurrence pattern.
 _GRAPH_DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
@@ -94,19 +92,20 @@ def graph_days(weekdays: list[int]) -> list[str]:
     return [_GRAPH_DAYS[d] for d in weekdays]
 
 
-def excluded_dates(weekdays: list[int]) -> list[date]:
+def excluded_dates(weekdays: list[int], term: Term = DEFAULT_TERM) -> list[date]:
     """Non-instruction days that actually fall on this meeting's weekdays.
 
     Only these need cancelling; a Monday holiday is irrelevant to a
     Tuesday/Thursday lecture, and asking Graph to cancel a nonexistent
     occurrence is an error.
     """
-    return [d for d in NON_INSTRUCTION if d.weekday() in weekdays]
+    return [d for d in term.holidays if d.weekday() in weekdays]
 
 
 def build_meetings(
     enrollments: list[tuple[str, str]],
     fetch_section,
+    term: Term = DEFAULT_TERM,
 ) -> list[ClassMeeting]:
     """Turn (course_label, canvas_section_name) pairs into ClassMeetings.
 
@@ -131,8 +130,8 @@ def build_meetings(
                     course=course,
                     section=section_name,
                     meeting=meeting,
-                    start_date=section.start_date or TERM_START,
-                    end_date=section.end_date or TERM_END,
+                    start_date=section.start_date or term.start,
+                    end_date=section.end_date or term.end,
                 )
             )
     return out
