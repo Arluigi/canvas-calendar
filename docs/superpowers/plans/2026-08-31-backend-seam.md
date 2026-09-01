@@ -37,7 +37,7 @@
 - Consumes: nothing
 - Produces: `Term` frozen dataclass with `year: int`, `season: str`, `start: date`, `end: date`, `holidays: tuple[date, ...]`; `DEFAULT_TERM`; `load_term() -> Term`; `Term.covers(day: date) -> bool`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Create `tests/test_terms.py`:
 
@@ -86,7 +86,7 @@ def test_term_from_config_falls_back_to_default_when_absent():
     assert term_from_config(None) is DEFAULT_TERM
 ```
 
-- [ ] **Step 2: Run them and confirm they fail**
+- [x] **Step 2: Run them and confirm they fail**
 
 ```bash
 uv run pytest tests/test_terms.py -v
@@ -94,7 +94,7 @@ uv run pytest tests/test_terms.py -v
 
 Expected: `ModuleNotFoundError: No module named 'canvas_calendar.terms'`.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 Create `src/canvas_calendar/terms.py`:
 
@@ -157,7 +157,7 @@ def term_from_config(block: dict | None) -> Term:
     )
 ```
 
-- [ ] **Step 4: Run the tests and confirm they pass**
+- [x] **Step 4: Run the tests and confirm they pass**
 
 ```bash
 uv run pytest tests/test_terms.py -v
@@ -166,7 +166,7 @@ uv run pytest tests/test_terms.py -v
 Expected: 5 passed. Note `DEFAULT_TERM.holidays` is a tuple, so
 `len(...) == 10` and `in` both work as the tests expect.
 
-- [ ] **Step 5: Point `meetings.py` at the Term without breaking its callers**
+- [x] **Step 5: Point `meetings.py` at the Term without breaking its callers**
 
 In `src/canvas_calendar/meetings.py`, replace the constants block at lines
 22-29 with:
@@ -200,7 +200,7 @@ with `term: Term = DEFAULT_TERM` added as its last parameter.
 Keep the defaults: every existing call site passes no term and must keep
 producing identical output.
 
-- [ ] **Step 6: Add the config loader**
+- [x] **Step 6: Add the config loader**
 
 In `src/canvas_calendar/config.py`, add:
 
@@ -218,7 +218,7 @@ def load_term():
 pattern by adding `import json` at the top of `load_term` if the module-level
 import is still absent.
 
-- [ ] **Step 7: Make Canvas credentials machine-independent**
+- [x] **Step 7: Make Canvas credentials machine-independent**
 
 `config.py:9` hardcodes `~/code/canvas-mcp/.env`, which exists on exactly one
 machine. Extend the resolution order in `load_canvas_credentials`, keeping the
@@ -261,7 +261,7 @@ Add a test in `tests/test_config.py` (create it if absent) asserting that the
 env var wins over `credentials.json`, and that `credentials.json` wins over
 the legacy `.env`.
 
-- [ ] **Step 8: Full suite, lint, and behaviour check**
+- [x] **Step 8: Full suite, lint, and behaviour check**
 
 ```bash
 uv run pytest -q && uv run ruff check src tests
@@ -272,7 +272,7 @@ uv run canvas-calendar sync 2>&1 | tail -1
 Expected: all tests pass; `meetings` still resolves 6 series; `sync` reports
 `{'skip': 39, 'noop': 151}` — unchanged.
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add src/canvas_calendar/terms.py tests/test_terms.py \
@@ -301,7 +301,7 @@ emitted a fall schedule silently."
 - Consumes: `load_sync_options` from Task 1's config module
 - Produces: `make_adapter(opts: dict) -> tuple[CalendarAdapter, str]` returning the adapter and the resolved calendar id; `load_calendar_backend() -> str`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Create `tests/test_factory.py`:
 
@@ -346,7 +346,7 @@ def test_factory_resolves_the_calendar_by_configured_name(monkeypatch):
     assert fake.asked_for == "My Calendar"
 ```
 
-- [ ] **Step 2: Run them and confirm they fail**
+- [x] **Step 2: Run them and confirm they fail**
 
 ```bash
 uv run pytest tests/test_factory.py -v
@@ -354,7 +354,7 @@ uv run pytest tests/test_factory.py -v
 
 Expected: `ModuleNotFoundError: No module named 'canvas_calendar.calendars.factory'`.
 
-- [ ] **Step 3: Add `upsert_recurring` to the Protocol**
+- [x] **Step 3: Add `upsert_recurring` to the Protocol**
 
 In `src/canvas_calendar/calendars/base.py`, inside `class CalendarAdapter`,
 after `list_uids`:
@@ -369,7 +369,7 @@ after `list_uids`:
         ...
 ```
 
-- [ ] **Step 4: Write the factory**
+- [x] **Step 4: Write the factory**
 
 Create `src/canvas_calendar/calendars/factory.py`:
 
@@ -428,7 +428,7 @@ def make_adapter(opts: dict) -> tuple[CalendarAdapter, str]:
     return adapter, adapter.ensure_calendar(opts["assignments_calendar"])
 ```
 
-- [ ] **Step 5: Add the config keys**
+- [x] **Step 5: Add the config keys**
 
 In `src/canvas_calendar/config.py`, add to the `defaults` dict in
 `load_sync_options`:
@@ -441,7 +441,7 @@ In `src/canvas_calendar/config.py`, add to the `defaults` dict in
 `None` is the sentinel the factory rejects. The author's config already sets
 `"outlook"` explicitly, so their path is unaffected.
 
-- [ ] **Step 6: Run the tests and confirm they pass**
+- [x] **Step 6: Run the tests and confirm they pass**
 
 ```bash
 uv run pytest tests/test_factory.py -v
@@ -449,7 +449,7 @@ uv run pytest tests/test_factory.py -v
 
 Expected: 3 passed.
 
-- [ ] **Step 7: Replace the direct constructions**
+- [x] **Step 7: Replace the direct constructions**
 
 In `src/canvas_calendar/cli.py`, replace lines 94-101 (the `auth = ...`
 through `calendar_id = ...` block) with:
@@ -473,7 +473,7 @@ Outlook-only by design and routing it through the factory would imply
 otherwise. Change only its hardcoded `"UIUC Assignments"` to
 `load_sync_options()["assignments_calendar"]`.
 
-- [ ] **Step 8: Full suite, lint, behaviour check**
+- [x] **Step 8: Full suite, lint, behaviour check**
 
 ```bash
 uv run pytest -q && uv run ruff check src tests
@@ -483,7 +483,7 @@ uv run canvas-calendar sync 2>&1 | tail -1
 Expected: tests pass; `sync` reports `{'skip': 39, 'noop': 151}` — unchanged.
 If the counts differ, the factory resolved a different calendar; stop.
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add src/canvas_calendar/calendars/base.py \
@@ -512,7 +512,7 @@ iCloud, Google or Exchange account.
 - Consumes: `assert_ours`, `UID_PREFIX` from `calendars/base.py`; `is_end_of_day`, `to_local`, `CHICAGO` from `timeutil.py`
 - Produces: `EventKitAdapter` satisfying `CalendarAdapter`; `UID_SCHEME = "x-canvas-calendar:"`
 
-- [ ] **Step 1: Add the dependency**
+- [x] **Step 1: Add the dependency**
 
 In `pyproject.toml`, change the `dependencies` line to:
 
@@ -532,7 +532,7 @@ uv sync
 uv run python -c "import EventKit; print('EventKit importable')"
 ```
 
-- [ ] **Step 2: Write the failing tests**
+- [x] **Step 2: Write the failing tests**
 
 Create `tests/test_eventkit_adapter.py`. These are unit tests against fakes —
 no real calendar is touched.
@@ -615,7 +615,7 @@ def test_delete_refuses_when_the_event_url_disagrees(monkeypatch):
         a.delete("cal", "cc-1")
 ```
 
-- [ ] **Step 3: Run them and confirm they fail**
+- [x] **Step 3: Run them and confirm they fail**
 
 ```bash
 uv run pytest tests/test_eventkit_adapter.py -v
@@ -623,7 +623,7 @@ uv run pytest tests/test_eventkit_adapter.py -v
 
 Expected: `ModuleNotFoundError: No module named 'canvas_calendar.calendars.eventkit'`.
 
-- [ ] **Step 4: Write the adapter**
+- [x] **Step 4: Write the adapter**
 
 Create `src/canvas_calendar/calendars/eventkit.py`:
 
@@ -875,7 +875,7 @@ def _ns(dt: datetime):
     return NSDate.dateWithTimeIntervalSince1970_(dt.timestamp())
 ```
 
-- [ ] **Step 5: Run the tests and confirm they pass**
+- [x] **Step 5: Run the tests and confirm they pass**
 
 ```bash
 uv run pytest tests/test_eventkit_adapter.py -v
@@ -883,7 +883,7 @@ uv run pytest tests/test_eventkit_adapter.py -v
 
 Expected: 5 passed.
 
-- [ ] **Step 6: Full suite, lint, and confirm Outlook is untouched**
+- [x] **Step 6: Full suite, lint, and confirm Outlook is untouched**
 
 ```bash
 uv run pytest -q && uv run ruff check src tests
@@ -893,7 +893,7 @@ uv run canvas-calendar sync 2>&1 | tail -1
 Expected: `{'skip': 39, 'noop': 151}`. The EventKit module is imported only by
 the factory's `_build_eventkit`, which the outlook path never calls.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add pyproject.toml uv.lock src/canvas_calendar/calendars/eventkit.py \
@@ -917,7 +917,7 @@ by spike to survive a CalDAV and Exchange round-trip."
 - Consumes: `ClassMeeting` from `meetings.py`; `excluded_dates`, `first_occurrence`, `parse_clock` from the same module
 - Produces: `EventKitAdapter.upsert_recurring(calendar_id, meeting) -> str | None`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Append to `tests/test_eventkit_adapter.py`:
 
@@ -941,7 +941,7 @@ def test_weekday_mapping_matches_eventkit_numbering():
     assert ek_weekday(6) == 1   # Sunday
 ```
 
-- [ ] **Step 2: Run and confirm they fail**
+- [x] **Step 2: Run and confirm they fail**
 
 ```bash
 uv run pytest tests/test_eventkit_adapter.py -k "recurring or weekday" -v
@@ -950,7 +950,7 @@ uv run pytest tests/test_eventkit_adapter.py -k "recurring or weekday" -v
 Expected: `ImportError: cannot import name 'ek_weekday'` and an
 `AttributeError` for `upsert_recurring`.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 Add to `src/canvas_calendar/calendars/eventkit.py`:
 
@@ -1063,7 +1063,7 @@ and this method on `EventKitAdapter`:
 Note `NSDate` is imported in `_cancel_occurrences` for symmetry with the rest
 of the file; remove the import if ruff flags it as unused.
 
-- [ ] **Step 4: Run the tests and confirm they pass**
+- [x] **Step 4: Run the tests and confirm they pass**
 
 ```bash
 uv run pytest tests/test_eventkit_adapter.py -v
@@ -1071,7 +1071,7 @@ uv run pytest tests/test_eventkit_adapter.py -v
 
 Expected: 7 passed.
 
-- [ ] **Step 5: Full suite, lint, commit**
+- [x] **Step 5: Full suite, lint, commit**
 
 ```bash
 uv run pytest -q && uv run ruff check src tests
@@ -1099,7 +1099,7 @@ instead of the clean exit-code-2 path.
 - Consumes: `make_adapter` (Task 2), `load_term` (Task 1), `CanvasClient`
 - Produces: no new public interface
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Append to `tests/test_meetings.py`:
 
@@ -1114,7 +1114,7 @@ def test_course_explorer_url_follows_the_configured_term():
     assert explorer_base(t).endswith("/2027/spring")
 ```
 
-- [ ] **Step 2: Run and confirm it fails**
+- [x] **Step 2: Run and confirm it fails**
 
 ```bash
 uv run pytest tests/test_meetings.py -k explorer -v
@@ -1122,7 +1122,7 @@ uv run pytest tests/test_meetings.py -k explorer -v
 
 Expected: `ImportError: cannot import name 'explorer_base'`.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 In `src/canvas_calendar/sync_meetings.py`, replace the module-level `CX`
 constant at line 20 with:
@@ -1165,13 +1165,13 @@ and delete the `calendar_name` parameter's default, taking it from
 
 Thread the term through: `fetch()` uses `explorer_base(load_term())`.
 
-- [ ] **Step 4: Run the tests and confirm they pass**
+- [x] **Step 4: Run the tests and confirm they pass**
 
 ```bash
 uv run pytest tests/test_meetings.py -v
 ```
 
-- [ ] **Step 5: Behaviour check against live data**
+- [x] **Step 5: Behaviour check against live data**
 
 ```bash
 uv run canvas-calendar meetings 2>&1 | tail -10
@@ -1181,7 +1181,7 @@ Expected: the same 6 series as before, with the same CRNs, times and rooms.
 Any difference means the Course Explorer URL or the enrollment query changed
 shape; stop and compare.
 
-- [ ] **Step 6: Full suite, lint, commit**
+- [x] **Step 6: Full suite, lint, commit**
 
 ```bash
 uv run pytest -q && uv run ruff check src tests
@@ -1207,7 +1207,7 @@ calendar, or the adapter is unverified where it matters.
 - Consumes: `EventKitAdapter`
 - Produces: nothing
 
-- [ ] **Step 1: Register the marker**
+- [x] **Step 1: Register the marker**
 
 In `pyproject.toml`, under `[tool.pytest.ini_options]`:
 
@@ -1216,7 +1216,7 @@ markers = ["live: touches a real calendar; deselected by default"]
 addopts = "-m 'not live'"
 ```
 
-- [ ] **Step 2: Write the test**
+- [x] **Step 2: Write the test**
 
 Create `tests/test_eventkit_live.py`:
 
@@ -1285,7 +1285,7 @@ def test_foreign_events_are_never_listed(adapter):
     assert a.list_uids(cal_id) == set(), "a foreign event leaked into list_uids"
 ```
 
-- [ ] **Step 3: Run it explicitly**
+- [x] **Step 3: Run it explicitly**
 
 ```bash
 uv run pytest -m live -v
@@ -1295,7 +1295,7 @@ Expected: 2 passed. If `ensure_calendar` raises `CalendarNotWritable`, the
 account refuses calendar creation — record which source, since that is the
 Google case the spike could not test.
 
-- [ ] **Step 4: Confirm the default run still deselects it**
+- [x] **Step 4: Confirm the default run still deselects it**
 
 ```bash
 uv run pytest -q
@@ -1304,7 +1304,7 @@ uv run pytest -q
 Expected: the live tests are not collected; the count matches the previous
 task's total.
 
-- [ ] **Step 5: Confirm no scratch calendar survived**
+- [x] **Step 5: Confirm no scratch calendar survived**
 
 ```bash
 uv run python -c "
@@ -1319,7 +1319,7 @@ print('scratch left behind:', [n for n in names if 'canvas-calendar test' in n] 
 
 Expected: `none`.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add tests/test_eventkit_live.py pyproject.toml
