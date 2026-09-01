@@ -127,6 +127,10 @@ def main() -> int:
         "\nCanvas token: canvas.illinois.edu > Account > Settings > "
         "+ New Access Token"
     )
+    print(
+        "  No such button? Request one (takes a day or two) — see the README, "
+        "then re-run setup."
+    )
     token = _ask("Paste it here")
     if token:
         print(f"  saved to {save_canvas_token(token)} (mode 0600)")

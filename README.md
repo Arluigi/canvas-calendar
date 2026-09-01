@@ -7,6 +7,33 @@ It reads Canvas *and* the UIUC Course Explorer, so you get recurring lecture
 blocks with real rooms alongside every deadline — including the ones Canvas
 doesn't put a due date on.
 
+## First: get a Canvas API token
+
+**Start this before anything else** — it can take a day or two to come back,
+and setup needs it.
+
+Request one here:
+[UIUC Canvas API token request](https://help.uillinois.edu/TDClient/42/UIUC/Requests/TicketRequests/NewForm?ID=4AZBjiZfXWs_&RequestorType=Service)
+
+If it asks what you'll use it for, this is accurate and enough:
+
+> I'm a UIUC student and I'd like a Canvas API token for a personal calendar
+> tool that copies my own assignment due dates and class meeting times into my
+> calendar. It only makes read-only (GET) requests against my own enrollments
+> and never writes anything back to Canvas.
+
+That second sentence is literally true — every Canvas call this tool makes is a
+`GET`. It reads your courses, assignments, modules and enrollments; the only
+thing it ever writes to is your calendar.
+
+Some accounts can self-serve instead, without a ticket: **canvas.illinois.edu →
+Account → Settings → + New Access Token**. Try that first; use the form above
+if the button isn't there or the token is rejected.
+
+> Illinois caps token lifetime at roughly 30 days, so you'll redo this about
+> monthly. `canvas-calendar doctor` warns you before it expires, and
+> `canvas-calendar token` prints the steps again.
+
 ## Install
 
 ```bash

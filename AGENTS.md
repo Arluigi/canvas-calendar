@@ -89,6 +89,11 @@ Run these in order. Steps 2 and 5 must not be swapped — the Calendar
 permission prompt has to be answered by a human who is present, and a
 LaunchAgent installed before that grant will stall on a prompt nobody sees.
 
+0. **Get a Canvas API token first — it can take a day or two.** Try
+   canvas.illinois.edu > Account > Settings > + New Access Token; if that is
+   unavailable, request one at https://help.uillinois.edu/TDClient/42/UIUC/Requests/TicketRequests/NewForm?ID=4AZBjiZfXWs_&RequestorType=Service
+   The tool is read-only against Canvas (every call is a GET), which is what
+   the request form's "use" field should say.
 1. `./install.sh` — installs `uv` if missing, then the tool to `~/.local/bin`.
 2. `canvas-calendar setup` — choose backend, grant Calendar access, paste a
    Canvas token, pick the term.

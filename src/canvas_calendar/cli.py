@@ -32,12 +32,17 @@ def render_preview(assignments: list[Assignment]) -> str:
 
 
 RENEWAL_STEPS = """
-Renew (about a minute):
+Renew (about a minute, once you have the new token):
   1. canvas.illinois.edu -> Account -> Settings -> + New Access Token
+     No such button? Request one -- it can take a day or two:
+     https://help.uillinois.edu/TDClient/42/UIUC/Requests/TicketRequests/NewForm?ID=4AZBjiZfXWs_&RequestorType=Service
+     The tool only makes read-only (GET) calls against your own enrollments.
   2. Purpose: canvas-calendar. Copy the value now; Canvas shows it once.
-  3. In a terminal:
-       cd ~/code/canvas-mcp
-       NEW_CANVAS_TOKEN='paste-here' node scripts/rotate-canvas-token.mjs
+  3. Either re-run `canvas-calendar setup`, or paste it straight in:
+       ~/.config/canvas-calendar/credentials.json
+       {"CANVAS_API_TOKEN": "paste-here",
+        "CANVAS_API_URL": "https://canvas.illinois.edu"}
+  4. canvas-calendar doctor      # confirms the new token works
 
 Canvas OAuth2 refresh tokens would remove this chore entirely, but Canvas
 developer keys are issued only by institution admins, and Illinois blocks
