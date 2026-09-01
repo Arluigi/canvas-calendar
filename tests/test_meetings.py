@@ -152,3 +152,29 @@ def test_location_omits_placeholder_values():
     )
     out = build_meetings([("MCB 354", "MCB 354 ADM Fall 2026 CRN40610")], lambda c: sec)
     assert out[0].location == "Location Pending"
+
+
+def test_course_explorer_url_follows_the_configured_term():
+    """Hardcoded /2026/fall is right for one semester and silently wrong after."""
+    from datetime import date
+
+    from canvas_calendar.sync_meetings import explorer_base
+    from canvas_calendar.terms import Term
+
+    t = Term(year=2027, season="spring", start=date(2027, 1, 19),
+             end=date(2027, 5, 5), holidays=())
+    assert explorer_base(t).endswith("/2027/spring")
+
+
+def test_excluded_dates_follows_the_configured_term():
+    from datetime import date
+
+    from canvas_calendar.meetings import excluded_dates
+    from canvas_calendar.terms import Term
+
+    spring = Term(year=2027, season="spring", start=date(2027, 1, 19),
+                  end=date(2027, 5, 5),
+                  holidays=(date(2027, 3, 15), date(2027, 3, 16)))  # Mon, Tue
+    assert excluded_dates([0], spring) == [date(2027, 3, 15)]   # Monday only
+    assert excluded_dates([1], spring) == [date(2027, 3, 16)]   # Tuesday only
+    assert excluded_dates([2], spring) == []                    # no Wednesday

@@ -57,6 +57,18 @@ class CanvasClient:
         """
         return self._get_all("/users/self/user_generated_tokens")
 
+    def list_enrollments(self) -> list[dict]:
+        """The user's own active enrollments. Paged, so a 401 mid-walk raises
+        TokenExpired rather than surfacing as a JSON decode error."""
+        return self._get_all("/users/self/enrollments", **{"state[]": "active"})
+
+    def get_section(self, section_id: int) -> dict:
+        r = self._http.get(f"{self._base}/sections/{section_id}", headers=self._headers)
+        if r.status_code == 401:
+            raise TokenExpired(r.text)
+        r.raise_for_status()
+        return r.json()
+
     def list_modules(self, course_id: int) -> list[dict]:
         return self._get_all(f"/courses/{course_id}/modules")
 
