@@ -159,12 +159,18 @@ def main() -> int:
         print(f"  config {line}")
 
     # 6. Verify before offering to schedule anything.
+    #
+    # The "Scheduled run" check is deliberately excluded from both the gate
+    # AND the output. The agents genuinely are not installed yet -- that is
+    # the next step setup tells the user to take -- so showing it here ends a
+    # successful setup with a red cross and "1 problem(s) found", which reads
+    # as failure to exactly the user this wizard exists for.
     from canvas_calendar.doctor import render, run_checks
 
     print()
-    checks = run_checks()
+    checks = [c for c in run_checks() if c.name != "Scheduled run"]
     print(render(checks))
-    if not all(c.ok for c in checks if c.name != "Scheduled run"):
+    if not all(c.ok for c in checks):
         print("\nFix the above, then run: canvas-calendar setup")
         return 1
 

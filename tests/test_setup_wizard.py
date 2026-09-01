@@ -74,3 +74,35 @@ def test_write_config_output_is_valid_json(tmp_path):
     p = tmp_path / "config.json"
     write_config({"term": {"year": 2027}, "calendar_backend": "eventkit"}, path=p)
     json.loads(p.read_text())  # must not raise
+
+
+def test_setup_does_not_report_the_missing_agent_as_a_problem(monkeypatch, capsys, tmp_path):
+    """Setup ends by telling the user to run install-agents. Showing the
+    not-yet-installed agent as a red ✗ makes a successful setup read as a
+    failure to exactly the user this wizard exists for."""
+    import canvas_calendar.setup_wizard as wiz
+    from canvas_calendar import doctor
+
+    monkeypatch.setattr(wiz, "GRAPH_CONFIG", tmp_path / "config.json")
+    monkeypatch.setattr(wiz, "CREDENTIALS", tmp_path / "credentials.json")
+    monkeypatch.setattr(
+        doctor, "run_checks",
+        lambda: [
+            doctor.Check("Canvas token", True, "valid", ""),
+            doctor.Check("Term", True, "in range", ""),
+            doctor.Check("Calendar", True, "ok", ""),
+            doctor.Check("Scheduled run", False, "no agent loaded", "install-agents"),
+        ],
+    )
+    answers = iter(["2", "UIUC Assignments", "", ""])
+    monkeypatch.setattr("builtins.input", lambda _: next(answers))
+    monkeypatch.setattr(
+        "canvas_calendar.calendars.device_login.device_login", lambda: 0
+    )
+
+    rc = wiz.main()
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert "problem(s) found" not in out
+    assert "All checks passed" in out
+    assert "install-agents" in out, "it must still tell them the next step"
