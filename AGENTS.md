@@ -1,7 +1,8 @@
 # canvas-calendar
 
-Syncs UIUC class meetings and Canvas assignment deadlines into one Outlook
-calendar, and emails a morning debrief. Runs unattended on this Mac.
+Syncs UIUC class meetings and Canvas assignment deadlines into one calendar
+— iCloud, Google or Outlook — and emails a morning debrief. Runs unattended
+on macOS. See README.md for the user-facing install.
 
 Design rationale lives in `docs/superpowers/specs/` — read it before changing
 behaviour; it records the audit every decision came from.
@@ -19,6 +20,10 @@ canvas-calendar daily --live       # what the LaunchAgent runs
 canvas-calendar token              # Canvas expiry + renewal steps
 canvas-calendar digest             # last run's report
 canvas-calendar login              # Graph device-code auth (after scope changes)
+canvas-calendar setup              # first-run wizard; backend, permission, token, term
+canvas-calendar doctor             # token, term, calendar, scheduled job
+canvas-calendar install-agents     # render + load the LaunchAgents for this user
+uv run pytest -m live              # touches a real calendar; deselected by default
 ```
 
 ## Gotchas that cost hours
@@ -53,8 +58,18 @@ canvas-calendar login              # Graph device-code auth (after scope changes
 07:15 + 19:15  com.aryan.canvas-calendar
 ```
 
-Plists in `deploy/`. Exit codes: 0 clean, 1 apply errors, 2 Canvas token
-expired, 3 Outlook auth failed.
+Both run `~/.local/bin/canvas-calendar`, NOT the repo `.venv` — the branch
+checked out must never decide what runs at 07:15. After changing code, run
+`uv tool install --force .` to upgrade the scheduled copy; until then the
+schedule keeps running the previously installed build.
+
+These use the legacy `com.aryan.*` labels. `install-agents` writes
+`io.github.canvas-calendar.*`, so running it here would schedule everything
+twice — see `deploy/README.md`. Plist templates live in
+`src/canvas_calendar/data/` so they ship in the wheel.
+
+Exit codes: 0 clean, 1 apply errors, 2 Canvas token expired, 3 Outlook auth
+failed.
 
 ## Recurring chore
 
@@ -66,22 +81,31 @@ token create and regenerate via API. `canvas-calendar token` prints the steps.
 
 Every failure mode here is silent omission — work that exists but never
 surfaces. Extra events are cheap; a missing one is not. Hence 0-point items
-are calendared by default, undatable items are reprinted in every digest, and
-filtered email is counted rather than dropped. When extending this, ask what a
+are calendared by default, undatable items are reprinted in every digest,
+filtered email is counted rather than dropped, and completed work is named as
+it is cleared. When extending this, ask what a
 change could make *invisible*, not just what it adds.
 
 ## Session Log
 
-### 2026-08-25
-- Completed: Built the whole project — read path (Course Explorer + Canvas,
-  DST-safe), module date extraction, SQLite diff engine, Outlook adapter via
-  Graph device-code auth, 157 events live, recurring class meetings with
-  holiday exclusions, manual overrides layer, daily LaunchAgent + digest,
-  morning debrief email with mail triage, hardware wake at 06:55.
-  247 tests, ruff clean, 34 commits, PR #1 open.
-- Next: 33 assignments still have no date anywhere (MCB 436 polls, MCB 364
-  `Wk1`–`Wk11`) — need a posted schedule like the MCB 354 one to resolve.
-  Canvas token expires 2026-09-24.
+### 2026-09-01
+- Completed: Made the project shareable. Machine isolation (LaunchAgents now
+  run `~/.local/bin/canvas-calendar`, not the git working tree; `main` merged
+  forward from 30 commits behind). Completion tracking — assignments leave the
+  calendar once Canvas reports them submitted/graded/excused, with the digest
+  naming what it cleared. EventKit adapter so iCloud, Google and Exchange all
+  work with no OAuth of our own; adapter factory; pure `terms.py`; portable
+  Canvas credentials. Onboarding: `doctor`, `setup`, `install-agents`,
+  `AGENTS.md` as the single agent instruction file (CLAUDE.md and GEMINI.md
+  symlink to it), `install.sh`, README. Repo made public and the install
+  verified end to end from the public git URL.
+  335 tests + 4 live, ruff clean, 66 commits.
+- Next: nothing outstanding from the spec. Open ideas: `canvas-calendar done
+  <uid>` so the MCB 320 quizzes and SubHeader exams (no Canvas submission, so
+  they can never auto-clear) can be marked done by hand; a portable debrief
+  email (today needs Graph Mail.Send, so Outlook-only). Watch the first friend
+  through the Google path — creating the calendar by hand is the one rough
+  edge. **Canvas token expires 2026-09-24.**
 
 ## Installing for a new user
 
