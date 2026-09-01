@@ -76,3 +76,29 @@ def test_extracted_date_is_end_of_day_local():
         year=2026,
     )
     assert (items[0].due_at.hour, items[0].due_at.minute) == (23, 59)
+
+
+def test_build_assignments_flags_completed():
+    raw = [
+        {"id": 1, "name": "done", "points_possible": 10,
+         "due_at": "2026-09-01T04:59:00Z",
+         "submission": {"workflow_state": "graded", "score": 10.0}},
+        {"id": 2, "name": "not done", "points_possible": 10,
+         "due_at": "2026-09-01T04:59:00Z",
+         "submission": {"workflow_state": "unsubmitted"}},
+        {"id": 3, "name": "no submission key", "points_possible": 10,
+         "due_at": "2026-09-01T04:59:00Z"},
+    ]
+    out = {a.canvas_id: a.completed for a in build_assignments(raw, course="MCB 244")}
+    assert out == {1: True, 2: False, 3: False}
+
+
+def test_completed_assignments_keep_their_due_date():
+    """Completion must not blank the date -- diff still needs it to report."""
+    raw = [{"id": 1, "name": "done", "points_possible": 1,
+            "due_at": "2026-09-01T04:59:00Z",
+            "submission": {"workflow_state": "submitted",
+                           "submitted_at": "2026-08-30T10:00:00Z"}}]
+    a = build_assignments(raw, course="MCB 244")[0]
+    assert a.completed is True
+    assert a.due_at is not None

@@ -1,3 +1,5 @@
+from typing import ClassVar
+
 import httpx
 import pytest
 
@@ -79,3 +81,26 @@ def test_module_items_path():
 
     _client(handler).list_module_items(73446, 679183)
     assert seen["path"].endswith("/courses/73446/modules/679183/items")
+
+
+def test_list_assignments_requests_submission():
+    """Without include[]=submission every assignment looks unsubmitted."""
+    seen = {}
+
+    class FakeResp:
+        status_code = 200
+        headers: ClassVar[dict] = {}
+
+        def json(self):
+            return []
+
+        def raise_for_status(self):
+            return None
+
+    class FakeHTTP:
+        def get(self, url, headers=None, params=None):
+            seen.update(params or {})
+            return FakeResp()
+
+    CanvasClient("https://x/api/v1", "tok", http=FakeHTTP()).list_assignments(1)
+    assert seen.get("include[]") == "submission"

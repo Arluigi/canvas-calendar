@@ -6,6 +6,7 @@ import re
 from datetime import datetime, time
 
 from canvas_calendar.canvas.client import CanvasClient
+from canvas_calendar.completion import is_complete
 from canvas_calendar.config import load_canvas_credentials, load_sync_options
 from canvas_calendar.models import Assignment, CourseRef, Source
 from canvas_calendar.modules import extract_dates, parse_subheader_date
@@ -49,6 +50,7 @@ def build_assignments(raw: list[dict], course: str) -> list[Assignment]:
                 due_at=parse_canvas_ts(due) if due else None,
                 course=course,
                 source=Source.CANVAS if due else Source.UNRESOLVED,
+                completed=is_complete(a.get("submission")),
             )
         )
     return out

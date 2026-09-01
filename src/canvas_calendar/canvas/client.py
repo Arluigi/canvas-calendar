@@ -43,7 +43,10 @@ class CanvasClient:
         return self._get_all("/courses", enrollment_state="active")
 
     def list_assignments(self, course_id: int) -> list[dict]:
-        return self._get_all(f"/courses/{course_id}/assignments")
+        """`include[]=submission` attaches the current user's submission to
+        each assignment. Same endpoint, same pagination, no extra calls --
+        and without it every assignment looks unsubmitted."""
+        return self._get_all(f"/courses/{course_id}/assignments", **{"include[]": "submission"})
 
     def list_tokens(self) -> list[dict]:
         """The user's own access tokens, with expiry.

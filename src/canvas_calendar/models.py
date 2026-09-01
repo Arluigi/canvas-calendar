@@ -63,6 +63,11 @@ class Assignment:
     # reporting, but must not occupy calendar space. The diff turns this into
     # a SKIP. Without it, classify()'s verdict is computed and then ignored.
     digest_only: bool = False
+    # Set when Canvas reports the work turned in, graded with corroboration,
+    # or excused. diff() turns this into a DELETE so the event leaves the
+    # calendar. Never filtered out of the fetch: retraction must restore the
+    # event, and the digest must be able to count what it removed.
+    completed: bool = False
     # Canvas has several independent ID spaces. Assignments use the default
     # empty namespace; module items (SubHeader-derived events, e.g. MCB 320's
     # exams) use "mi-". Without this, assignment 5440597 and module item
