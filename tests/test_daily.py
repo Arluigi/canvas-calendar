@@ -7,10 +7,11 @@ from canvas_calendar.models import Assignment, Source
 from canvas_calendar.timeutil import CHICAGO
 
 
-def _a(name, course="MCB 244", days=2, source=Source.CANVAS, digest_only=False):
+def _a(name, course="MCB 244", days=2, source=Source.CANVAS, digest_only=False,
+       completed=False):
     return Assignment(
         canvas_id=1, name=name, points=1.0, course=course, source=source,
-        digest_only=digest_only,
+        digest_only=digest_only, completed=completed,
         due_at=datetime.now(CHICAGO) + timedelta(days=days),
     )
 
@@ -140,3 +141,28 @@ def test_credentials_section_appears_in_digest(tmp_path, monkeypatch):
     out = (tmp_path / "digest.md").read_text()
     assert "## Credentials" in out
     assert "4 days" in out
+
+
+def test_digest_names_completed_items(tmp_path, monkeypatch):
+    plan = [PlanEntry(Action.DELETE, "cc-1", _a("Homework Week 1", completed=True))]
+    out = _digest(plan, counts=Counter({"delete": 1}),
+                  tmp_path=tmp_path, monkeypatch=monkeypatch)
+    assert "Cleared as completed" in out
+    assert "Homework Week 1" in out
+    assert "MCB 244" in out
+
+
+def test_completed_items_are_not_listed_as_due(tmp_path, monkeypatch):
+    plan = [PlanEntry(Action.DELETE, "cc-1", _a("Already Turned In", completed=True))]
+    out = _digest(plan, counts=Counter({"delete": 1}),
+                  tmp_path=tmp_path, monkeypatch=monkeypatch)
+    due_section = out.split("## Due in the next 7 days")[1].split("\n## ")[0]
+    assert "Already Turned In" not in due_section
+
+
+def test_prune_deletes_do_not_appear_as_completed(tmp_path, monkeypatch):
+    """A DELETE with no assignment is a prune, not a completion."""
+    out = _digest([PlanEntry(Action.DELETE, "cc-99", None)],
+                  counts=Counter({"delete": 1}),
+                  tmp_path=tmp_path, monkeypatch=monkeypatch)
+    assert "Cleared as completed" not in out

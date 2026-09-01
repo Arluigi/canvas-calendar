@@ -199,7 +199,7 @@ def write_digest(plan, counts, errors, overrides_applied, token_note: str = "") 
     upcoming = [
         a
         for a in (p.assignment for p in plan if p.assignment)
-        if a.due_at and now <= a.due_at <= soon and not a.digest_only
+        if a.due_at and now <= a.due_at <= soon and not a.digest_only and not a.completed
     ]
     lines += [f"## Due in the next 7 days ({len(upcoming)})", ""]
     for a in sorted(upcoming, key=lambda x: x.due_at):
@@ -208,7 +208,32 @@ def write_digest(plan, counts, errors, overrides_applied, token_note: str = "") 
         lines.append("- nothing due")
     lines.append("")
 
-    # 4. Extra credit, which is real work the calendar deliberately excludes.
+    # 4. What we removed because Canvas says it is done. Named, never merely
+    #    counted: this is the only place a false-positive completion becomes
+    #    visible before the work is missed.
+    cleared = [
+        p.assignment
+        for p in plan
+        if p.action is Action.DELETE and p.assignment and p.assignment.completed
+    ]
+    if cleared:
+        lines += [f"## Cleared as completed ({len(cleared)})", ""]
+        lines += [
+            f"- {a.course} — {a.name[:60]}"
+            + (f" (was due {to_local(a.due_at):%a %b %d})" if a.due_at else "")
+            for a in cleared
+        ]
+        lines += [
+            "",
+            (
+                "> Removed from the calendar because Canvas reports them submitted, "
+                "graded or excused. If something here is not actually done, it was "
+                "graded early or marked in error — check Canvas."
+            ),
+            "",
+        ]
+
+    # 5. Extra credit, which is real work the calendar deliberately excludes.
     ec = [
         a
         for a in (p.assignment for p in plan if p.assignment)
@@ -221,7 +246,7 @@ def write_digest(plan, counts, errors, overrides_applied, token_note: str = "") 
             for a in sorted(ec, key=lambda x: x.due_at)
         ] + [""]
 
-    # 5. The blind spots. The single most important section: work this system
+    # 6. The blind spots. The single most important section: work this system
     #    knows exists but cannot place on a calendar. Repeated every run until
     #    it is resolved, because a gap you stop being told about is a gap you
     #    forget.
