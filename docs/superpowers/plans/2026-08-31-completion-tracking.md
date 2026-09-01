@@ -34,7 +34,7 @@ Isolated in its own module because it is pure, it is the part most likely to nee
 - Consumes: nothing
 - Produces: `is_complete(submission: dict | None) -> bool`, used by Task 2
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Create `tests/test_completion.py`:
 
@@ -78,7 +78,7 @@ def test_is_complete(submission, expected, why):
     assert is_complete(submission) is expected, why
 ```
 
-- [ ] **Step 2: Run the tests and confirm they fail**
+- [x] **Step 2: Run the tests and confirm they fail**
 
 ```bash
 uv run pytest tests/test_completion.py -v
@@ -86,7 +86,7 @@ uv run pytest tests/test_completion.py -v
 
 Expected: collection error — `ModuleNotFoundError: No module named 'canvas_calendar.completion'`.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 Create `src/canvas_calendar/completion.py`:
 
@@ -132,7 +132,7 @@ def is_complete(submission: dict | None) -> bool:
     return False
 ```
 
-- [ ] **Step 4: Run the tests and confirm they pass**
+- [x] **Step 4: Run the tests and confirm they pass**
 
 ```bash
 uv run pytest tests/test_completion.py -v
@@ -140,7 +140,7 @@ uv run pytest tests/test_completion.py -v
 
 Expected: 11 passed.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/canvas_calendar/completion.py tests/test_completion.py
@@ -165,7 +165,7 @@ and no timestamp. Requires corroboration before treating work as done."
 - Consumes: `is_complete` from Task 1
 - Produces: `Assignment.completed: bool`, consumed by Tasks 3 and 4
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Append to `tests/test_pipeline.py`. `build_assignments` is already imported at
 line 4 of that file — do not add a second import.
@@ -225,7 +225,7 @@ def test_list_assignments_requests_submission(monkeypatch):
     assert seen.get("include[]") == "submission"
 ```
 
-- [ ] **Step 2: Run them and confirm they fail**
+- [x] **Step 2: Run them and confirm they fail**
 
 ```bash
 uv run pytest tests/test_pipeline.py -k completed tests/test_canvas_client.py -k submission -v
@@ -233,7 +233,7 @@ uv run pytest tests/test_pipeline.py -k completed tests/test_canvas_client.py -k
 
 Expected: `TypeError` on the unexpected `completed` keyword, or `AssertionError: None != 'submission'`.
 
-- [ ] **Step 3: Add the `completed` field**
+- [x] **Step 3: Add the `completed` field**
 
 In `src/canvas_calendar/models.py`, inside `@dataclass class Assignment`, add immediately after the `digest_only` field and its comment:
 
@@ -249,7 +249,7 @@ Place it before `namespace` so the existing positional argument order is
 unaffected for any caller using keywords only — every call site in this
 codebase uses keywords.
 
-- [ ] **Step 4: Request submissions in the client**
+- [x] **Step 4: Request submissions in the client**
 
 In `src/canvas_calendar/canvas/client.py`, replace `list_assignments`:
 
@@ -263,7 +263,7 @@ In `src/canvas_calendar/canvas/client.py`, replace `list_assignments`:
         )
 ```
 
-- [ ] **Step 5: Flag assignments during construction**
+- [x] **Step 5: Flag assignments during construction**
 
 In `src/canvas_calendar/pipeline.py`, add the import near the other
 `canvas_calendar` imports:
@@ -278,7 +278,7 @@ and in `build_assignments`, add one argument to the `Assignment(...)` call:
                 completed=is_complete(a.get("submission")),
 ```
 
-- [ ] **Step 6: Run the tests and confirm they pass**
+- [x] **Step 6: Run the tests and confirm they pass**
 
 ```bash
 uv run pytest tests/test_pipeline.py tests/test_canvas_client.py -v
@@ -286,7 +286,7 @@ uv run pytest tests/test_pipeline.py tests/test_canvas_client.py -v
 
 Expected: all pass, including the pre-existing tests in both files.
 
-- [ ] **Step 7: Full suite and lint**
+- [x] **Step 7: Full suite and lint**
 
 ```bash
 uv run pytest -q && uv run ruff check src tests
@@ -294,7 +294,7 @@ uv run pytest -q && uv run ruff check src tests
 
 Expected: all pass. `test_diff.py` should still be green — nothing consumes `completed` yet.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add src/canvas_calendar/models.py src/canvas_calendar/canvas/client.py \
@@ -314,7 +314,7 @@ git commit -m "feat: fetch Canvas submissions and flag completed assignments"
 - Consumes: `Assignment.completed` from Task 2
 - Produces: DELETE plan entries whose `assignment` is not None, consumed by Task 4
 
-- [ ] **Step 1: Extend the existing `_a` helper**
+- [x] **Step 1: Extend the existing `_a` helper**
 
 `tests/test_diff.py:8` already defines `_a(cid, name, when, source)`. Add one
 parameter rather than writing a second fixture:
@@ -332,7 +332,7 @@ def _a(cid, name="X", when="2026-08-25T19:00:00Z", source=Source.CANVAS, complet
     )
 ```
 
-- [ ] **Step 2: Write the failing tests**
+- [x] **Step 2: Write the failing tests**
 
 Append to `tests/test_diff.py`. The `_commit` helper at line 19 is how the
 existing tests seed state; reuse it.
@@ -370,7 +370,7 @@ def test_retracted_submission_restores_the_event(tmp_path):
     assert [p.action for p in plan] == [Action.CREATE]
 ```
 
-- [ ] **Step 3: Run them and confirm they fail**
+- [x] **Step 3: Run them and confirm they fail**
 
 ```bash
 uv run pytest tests/test_diff.py -k "completed or retracted" -v
@@ -378,7 +378,7 @@ uv run pytest tests/test_diff.py -k "completed or retracted" -v
 
 Expected: the first three fail. `test_completed_with_state_row_is_deleted` should report two entries (a SKIP plus a prune DELETE) or a CREATE, depending on ordering — either way, not a single DELETE.
 
-- [ ] **Step 4: Implement**
+- [x] **Step 4: Implement**
 
 In `src/canvas_calendar/diff.py`, at the very top of the `for a in assignments:` loop, **before** the existing `if a.due_at is None or ...` check:
 
@@ -401,7 +401,7 @@ Then extend the `diff()` docstring with a sentence after the `prune` paragraph:
     positive evidence, whereas absence from a filtered fetch is not.
 ```
 
-- [ ] **Step 5: Run the tests and confirm they pass**
+- [x] **Step 5: Run the tests and confirm they pass**
 
 ```bash
 uv run pytest tests/test_diff.py -v
@@ -409,7 +409,7 @@ uv run pytest tests/test_diff.py -v
 
 Expected: all pass, including every pre-existing diff test.
 
-- [ ] **Step 6: Confirm `apply_plan` needs no change**
+- [x] **Step 6: Confirm `apply_plan` needs no change**
 
 ```bash
 uv run pytest tests/test_apply.py -v
@@ -417,7 +417,7 @@ uv run pytest tests/test_apply.py -v
 
 Expected: all pass. The DELETE branch of `apply_plan` already calls `assert_ours`, `adapter.delete` and `store.delete`, and ignores `entry.assignment` — so a completion DELETE flows through unmodified.
 
-- [ ] **Step 7: Full suite, lint, commit**
+- [x] **Step 7: Full suite, lint, commit**
 
 ```bash
 uv run pytest -q && uv run ruff check src tests
@@ -442,7 +442,7 @@ The digest must name what it removed. Silently deleting 15 items would violate t
 - Consumes: DELETE entries with a non-None `assignment` whose `completed` is True, from Task 3
 - Produces: nothing consumed later
 
-- [ ] **Step 1: Extend the existing `_a` helper**
+- [x] **Step 1: Extend the existing `_a` helper**
 
 `tests/test_daily.py:10` already defines `_a(name, course, days, source, digest_only)`.
 Add one parameter:
@@ -457,7 +457,7 @@ def _a(name, course="MCB 244", days=2, source=Source.CANVAS, digest_only=False,
     )
 ```
 
-- [ ] **Step 2: Write the failing tests**
+- [x] **Step 2: Write the failing tests**
 
 Append to `tests/test_daily.py`. The `_digest` helper at line 18 patches
 `LOG_DIR` and `DIGEST_PATH` and returns the rendered text; use it rather than
@@ -489,7 +489,7 @@ def test_prune_deletes_do_not_appear_as_completed(tmp_path, monkeypatch):
     assert "Cleared as completed" not in out
 ```
 
-- [ ] **Step 3: Run them and confirm they fail**
+- [x] **Step 3: Run them and confirm they fail**
 
 ```bash
 uv run pytest tests/test_daily.py -k "completed" -v
@@ -497,7 +497,7 @@ uv run pytest tests/test_daily.py -k "completed" -v
 
 Expected: `AssertionError` — "Cleared as completed" is not in the digest, and the completed item does appear under "Due in the next 7 days".
 
-- [ ] **Step 4: Exclude completed items from the "due" section**
+- [x] **Step 4: Exclude completed items from the "due" section**
 
 In `src/canvas_calendar/daily.py`, in the `upcoming` comprehension, change:
 
@@ -511,7 +511,7 @@ to:
         if a.due_at and now <= a.due_at <= soon and not a.digest_only and not a.completed
 ```
 
-- [ ] **Step 5: Add the new section**
+- [x] **Step 5: Add the new section**
 
 Immediately after the `lines.append("")` that closes the "Due in the next 7 days" block, and before the `# 4. Extra credit` comment, insert:
 
@@ -542,7 +542,7 @@ Immediately after the `lines.append("")` that closes the "Due in the next 7 days
 
 Then renumber the trailing comments in the function: `# 4. Extra credit` becomes `# 5.`, and `# 5. The blind spots` becomes `# 6.`.
 
-- [ ] **Step 6: Run the tests and confirm they pass**
+- [x] **Step 6: Run the tests and confirm they pass**
 
 ```bash
 uv run pytest tests/test_daily.py -v
@@ -550,7 +550,7 @@ uv run pytest tests/test_daily.py -v
 
 Expected: all pass.
 
-- [ ] **Step 7: Full suite, lint, commit**
+- [x] **Step 7: Full suite, lint, commit**
 
 ```bash
 uv run pytest -q && uv run ruff check src tests
@@ -572,7 +572,7 @@ git commit -m "feat: digest names assignments cleared as completed"
 - Consumes: everything above
 - Produces: the `clear_completed` config key, default `True`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Append to `tests/test_pipeline.py`:
 
@@ -592,7 +592,7 @@ def test_clear_completed_false_keeps_events(monkeypatch):
     assert len(kept) == 1, "the item stays in the fetch; only the flag clears"
 ```
 
-- [ ] **Step 2: Run it and confirm it fails**
+- [x] **Step 2: Run it and confirm it fails**
 
 ```bash
 uv run pytest tests/test_pipeline.py -k clear_completed -v
@@ -600,7 +600,7 @@ uv run pytest tests/test_pipeline.py -k clear_completed -v
 
 Expected: `AttributeError: module 'canvas_calendar.pipeline' has no attribute 'apply_completion_policy'`.
 
-- [ ] **Step 3: Add the default to `load_sync_options`**
+- [x] **Step 3: Add the default to `load_sync_options`**
 
 In `src/canvas_calendar/config.py`, add to the `defaults` dict:
 
@@ -608,7 +608,7 @@ In `src/canvas_calendar/config.py`, add to the `defaults` dict:
         "clear_completed": True,
 ```
 
-- [ ] **Step 4: Add the policy function and wire it into `collect`**
+- [x] **Step 4: Add the policy function and wire it into `collect`**
 
 In `src/canvas_calendar/pipeline.py`, add:
 
@@ -639,7 +639,7 @@ In `collect()`, change the final return to run the policy before overrides:
 `collect()` already calls `load_sync_options()` for `exclude_assignment_ids`;
 reuse that call rather than loading the config twice.
 
-- [ ] **Step 5: Run the tests and confirm they pass**
+- [x] **Step 5: Run the tests and confirm they pass**
 
 ```bash
 uv run pytest tests/test_pipeline.py -v
@@ -647,13 +647,13 @@ uv run pytest tests/test_pipeline.py -v
 
 Expected: all pass.
 
-- [ ] **Step 6: Full suite and lint**
+- [x] **Step 6: Full suite and lint**
 
 ```bash
 uv run pytest -q && uv run ruff check src tests
 ```
 
-- [ ] **Step 7: Dry run against live Canvas and read the DELETE list**
+- [x] **Step 7: Dry run against live Canvas and read the DELETE list**
 
 ```bash
 uv run canvas-calendar sync 2>&1 | grep -A40 "DELETE"
@@ -664,7 +664,7 @@ Expected: a DELETE section listing completed work, and a count line. As of 2026-
 
 **STOP and read the list before continuing.** Every name in it must be work that is genuinely done. If anything unfamiliar appears, do not run `--live`; report it, because it means the predicate is wrong.
 
-- [ ] **Step 8: Document the behaviour**
+- [x] **Step 8: Document the behaviour**
 
 In `CLAUDE.md`, under "Gotchas that cost hours", add:
 
@@ -675,7 +675,7 @@ In `CLAUDE.md`, under "Gotchas that cost hours", add:
   clears so a false positive is visible before the work is missed.
 ```
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add src/canvas_calendar/config.py src/canvas_calendar/pipeline.py \
@@ -683,7 +683,7 @@ git add src/canvas_calendar/config.py src/canvas_calendar/pipeline.py \
 git commit -m "feat: clear_completed config toggle, default on"
 ```
 
-- [ ] **Step 10: Apply it for real**
+- [x] **Step 10: Apply it for real**
 
 Only after Step 7's list was read and every entry confirmed:
 
