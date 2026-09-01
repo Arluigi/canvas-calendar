@@ -87,6 +87,8 @@ def load_sync_options() -> dict:
         "debrief_to": "",
         "debrief_hour": 7,
         "clear_completed": True,
+        "assignments_calendar": "UIUC Assignments",
+        "calendar_backend": None,
     }
     if GRAPH_CONFIG.exists():
         defaults.update(

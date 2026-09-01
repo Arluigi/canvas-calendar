@@ -66,9 +66,8 @@ def render_plan(plan) -> str:
 
 def _sync(live: bool, course: str | None = None, force: bool = False) -> int:
     from canvas_calendar.apply import apply_plan
-    from canvas_calendar.calendars.graph_auth import GraphAuth
-    from canvas_calendar.calendars.outlook import OutlookAdapter
-    from canvas_calendar.config import load_graph_client_id, load_sync_options
+    from canvas_calendar.calendars.factory import make_adapter
+    from canvas_calendar.config import load_sync_options
     from canvas_calendar.diff import diff
     from canvas_calendar.pipeline import collect
     from canvas_calendar.state import DEFAULT_STATE_PATH, StateStore
@@ -91,14 +90,8 @@ def _sync(live: bool, course: str | None = None, force: bool = False) -> int:
     plan = diff(assignments, store, prune=course is None, force=force)
     print(render_plan(plan))
 
-    auth = GraphAuth(client_id=load_graph_client_id())
     opts = load_sync_options()
-    adapter = OutlookAdapter(
-        auth=auth,
-        reminder_timed=opts["reminder_minutes_timed"],
-        reminder_all_day=opts["reminder_minutes_all_day"],
-    )
-    calendar_id = adapter.ensure_calendar("UIUC Assignments")
+    adapter, calendar_id = make_adapter(opts)
 
     errors: list[str] = []
     counts = apply_plan(plan, adapter, calendar_id, store, dry_run=not live, errors=errors)

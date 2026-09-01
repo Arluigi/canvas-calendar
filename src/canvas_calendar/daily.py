@@ -13,10 +13,10 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 from canvas_calendar.apply import apply_plan
-from canvas_calendar.calendars.graph_auth import AuthError, GraphAuth
-from canvas_calendar.calendars.outlook import OutlookAdapter
+from canvas_calendar.calendars.factory import make_adapter
+from canvas_calendar.calendars.graph_auth import AuthError
 from canvas_calendar.canvas.client import TokenExpired
-from canvas_calendar.config import load_graph_client_id, load_sync_options
+from canvas_calendar.config import load_sync_options
 from canvas_calendar.diff import Action, diff
 from canvas_calendar.models import Source
 from canvas_calendar.pipeline import collect
@@ -116,13 +116,7 @@ def _run(dry_run: bool) -> int:
     plan = diff(assignments, store)
 
     opts = load_sync_options()
-    auth = GraphAuth(client_id=load_graph_client_id())
-    adapter = OutlookAdapter(
-        auth=auth,
-        reminder_timed=opts["reminder_minutes_timed"],
-        reminder_all_day=opts["reminder_minutes_all_day"],
-    )
-    calendar_id = adapter.ensure_calendar("UIUC Assignments")
+    adapter, calendar_id = make_adapter(opts)
 
     errors: list[str] = []
     counts = apply_plan(plan, adapter, calendar_id, store, dry_run=dry_run, errors=errors)

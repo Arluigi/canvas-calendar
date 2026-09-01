@@ -46,3 +46,11 @@ class CalendarAdapter(Protocol):
     def delete(self, calendar_id: str, uid: str) -> None: ...
 
     def list_uids(self, calendar_id: str) -> set[str]: ...
+
+    def upsert_recurring(self, calendar_id: str, meeting) -> str | None:
+        """Create or refresh a weekly class-meeting series.
+
+        Returns the backend's event id, or None when the meeting has no
+        usable weekday or start time.
+        """
+        ...

@@ -65,8 +65,13 @@ def gather() -> dict:
             errors.append(f"{label} unavailable: {type(exc).__name__}: {exc}")
             return fallback
 
+    # Deliberately not routed through make_adapter: the debrief also uses
+    # Graph for calendarview and Mail.Send, so it is Outlook-only by design.
+    cal_name = load_sync_options()["assignments_calendar"]
     course_cal = attempt(
-        "course calendar", lambda: OutlookAdapter(auth=auth).ensure_calendar("UIUC Assignments"), None
+        "course calendar",
+        lambda: OutlookAdapter(auth=auth).ensure_calendar(cal_name),
+        None,
     )
     events = attempt("calendar", lambda: todays_events(auth, course_cal), [])
     # None (not []) means the mail source failed, which the renderer shows
