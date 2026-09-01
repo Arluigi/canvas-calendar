@@ -100,7 +100,10 @@ change could make *invisible*, not just what it adds.
   symlink to it), `install.sh`, README. Repo made public and the install
   verified end to end from the public git URL.
   335 tests + 4 live, ruff clean, 66 commits.
-- Next: nothing outstanding from the spec. Open ideas: `canvas-calendar done
+- Next: **upgrade the scheduled copy to the merged code** — agreed 2026-09-01,
+  not yet done. `uv tool install --force ~/code/canvas-calendar`, then confirm
+  `~/.local/bin/canvas-calendar sync` matches the working tree before letting
+  19:15 run it. Nothing else outstanding from the spec. Open ideas: `canvas-calendar done
   <uid>` so the MCB 320 quizzes and SubHeader exams (no Canvas submission, so
   they can never auto-clear) can be marked done by hand; a portable debrief
   email (today needs Graph Mail.Send, so Outlook-only). Watch the first friend
