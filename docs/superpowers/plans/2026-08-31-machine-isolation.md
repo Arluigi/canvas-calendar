@@ -34,14 +34,14 @@ These keys are additive. The current code reads config via `load_sync_options()`
 - Consumes: nothing
 - Produces: a `config.json` containing `calendar_backend`, `debrief_enabled`, and a `term` block, consumed by Task 3 of the portability plan
 
-- [ ] **Step 1: Back up the current config**
+- [x] **Step 1: Back up the current config**
 
 ```bash
 cp ~/.config/canvas-calendar/config.json ~/.config/canvas-calendar/config.json.pre-isolation
 cat ~/.config/canvas-calendar/config.json
 ```
 
-- [ ] **Step 2: Add the three key groups**
+- [x] **Step 2: Add the three key groups**
 
 Edit `~/.config/canvas-calendar/config.json`, keeping every existing key exactly as-is and adding:
 
@@ -62,7 +62,7 @@ Edit `~/.config/canvas-calendar/config.json`, keeping every existing key exactly
 
 The `term` values are copied from `meetings.py:24-28` (`TERM_START`, `TERM_END`, `HOLIDAYS`) and must match them exactly. `season` is `"fall"` to match the Course Explorer path in `sync_meetings.py:20`.
 
-- [ ] **Step 3: Verify the file is valid JSON and the old keys survived**
+- [x] **Step 3: Verify the file is valid JSON and the old keys survived**
 
 ```bash
 uv run python -c "
@@ -77,7 +77,7 @@ print('config OK,', len(c), 'keys')
 
 Expected: `config OK, 11 keys` — and no assertion error.
 
-- [ ] **Step 4: Verify the running tool is unaffected**
+- [x] **Step 4: Verify the running tool is unaffected**
 
 The test is **differential**, not absolute. Canvas drifts on its own — an
 instructor moving a due date produces a legitimate pending UPDATE that has
@@ -114,7 +114,7 @@ Before any refactor touches the adapter layer, the UID contract needs a test tha
 - Consumes: `Assignment` from `canvas_calendar.models`, `UID_PREFIX` from `canvas_calendar.calendars.base`
 - Produces: nothing consumed by later tasks
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Append to `tests/test_models.py`:
 
@@ -146,7 +146,7 @@ def test_uid_format_is_frozen(canvas_id, namespace, expected):
 
 If `tests/test_models.py` already imports `Assignment`, do not import it twice.
 
-- [ ] **Step 2: Run it and confirm it passes against current code**
+- [x] **Step 2: Run it and confirm it passes against current code**
 
 ```bash
 uv run pytest tests/test_models.py::test_uid_format_is_frozen -v
@@ -154,7 +154,7 @@ uv run pytest tests/test_models.py::test_uid_format_is_frozen -v
 
 Expected: 3 passed. This test documents existing behaviour, so it passes immediately — that is correct. Its value is failing later.
 
-- [ ] **Step 3: Prove it actually guards, by breaking the code temporarily**
+- [x] **Step 3: Prove it actually guards, by breaking the code temporarily**
 
 Change `UID_PREFIX` in `src/canvas_calendar/calendars/base.py:11` from `"cc-"` to `"cx-"`, then:
 
@@ -168,7 +168,7 @@ Expected: FAIL. Now revert the change:
 git checkout src/canvas_calendar/calendars/base.py
 ```
 
-- [ ] **Step 4: Full suite and lint**
+- [x] **Step 4: Full suite and lint**
 
 ```bash
 uv run pytest -q && uv run ruff check src tests
@@ -176,7 +176,7 @@ uv run pytest -q && uv run ruff check src tests
 
 Expected: all pass, ruff clean.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add tests/test_models.py
@@ -199,7 +199,7 @@ Today both plists execute `/Users/aryansachdev/code/canvas-calendar/.venv/bin/ca
 - Consumes: a clean `feat/read-path` working tree
 - Produces: `~/.local/bin/canvas-calendar`, a binary independent of the checkout
 
-- [ ] **Step 1: Confirm the tree is clean and record the commit being installed**
+- [x] **Step 1: Confirm the tree is clean and record the commit being installed**
 
 ```bash
 git status --short && git rev-parse --short HEAD
@@ -207,7 +207,7 @@ git status --short && git rev-parse --short HEAD
 
 Expected: no output from `git status` (clean tree). Note the SHA — it is what gets installed.
 
-- [ ] **Step 2: Install the tool to a stable location**
+- [x] **Step 2: Install the tool to a stable location**
 
 ```bash
 uv tool install --force /Users/aryansachdev/code/canvas-calendar
@@ -216,7 +216,7 @@ ls -l ~/.local/bin/canvas-calendar
 
 Expected: the binary exists. If `~/.local/bin` is not on PATH that is fine — the plists use the absolute path.
 
-- [ ] **Step 3: Verify the installed copy behaves identically**
+- [x] **Step 3: Verify the installed copy behaves identically**
 
 ```bash
 ~/.local/bin/canvas-calendar sync 2>&1 | tail -1
@@ -224,7 +224,7 @@ Expected: the binary exists. If `~/.local/bin` is not on PATH that is fine — t
 
 Expected: identical to Task 1 Step 4 — `skip` and `noop` only, no creates, updates or deletes. If this differs, STOP and investigate before touching the plists.
 
-- [ ] **Step 4: Record the current plist contents**
+- [x] **Step 4: Record the current plist contents**
 
 ```bash
 cp ~/Library/LaunchAgents/com.aryan.canvas-calendar.plist /tmp/canvas-calendar.plist.bak
@@ -232,7 +232,7 @@ cp ~/Library/LaunchAgents/com.aryan.canvas-debrief.plist /tmp/canvas-debrief.pli
 grep -A3 ProgramArguments ~/Library/LaunchAgents/com.aryan.canvas-*.plist
 ```
 
-- [ ] **Step 5: Repoint both plists**
+- [x] **Step 5: Repoint both plists**
 
 In each plist, replace the first `<string>` inside `ProgramArguments`:
 
@@ -248,7 +248,7 @@ with:
 
 Leave every other key untouched — labels, `StartCalendarInterval`, log paths, and environment all stay as they are.
 
-- [ ] **Step 6: Reload both agents**
+- [x] **Step 6: Reload both agents**
 
 ```bash
 launchctl bootout gui/$UID/com.aryan.canvas-calendar 2>/dev/null
@@ -260,7 +260,7 @@ launchctl print gui/$UID/com.aryan.canvas-calendar | grep -E "program|state"
 
 Expected: `state = waiting` and a `program` path under `~/.local/bin`.
 
-- [ ] **Step 7: Prove the decoupling actually works**
+- [x] **Step 7: Prove the decoupling actually works**
 
 ```bash
 git stash list
@@ -284,7 +284,7 @@ Expected: the installed binary produces the same `skip`/`noop` counts while `mai
 - Consumes: a verified-green `feat/read-path`
 - Produces: a `main` that is the known-good tool, the base for the portability branch
 
-- [ ] **Step 1: Confirm green before merging**
+- [x] **Step 1: Confirm green before merging**
 
 ```bash
 uv run pytest -q && uv run ruff check src tests
@@ -292,7 +292,7 @@ uv run pytest -q && uv run ruff check src tests
 
 Expected: all tests pass, ruff clean.
 
-- [ ] **Step 2: Confirm the gap is what we think**
+- [x] **Step 2: Confirm the gap is what we think**
 
 ```bash
 git rev-list --left-right --count main...feat/read-path
@@ -300,7 +300,7 @@ git rev-list --left-right --count main...feat/read-path
 
 Expected: `0	31` or similar — zero commits on `main` that are not on the branch, so this is a fast-forward with nothing to lose.
 
-- [ ] **Step 3: Merge PR #1**
+- [x] **Step 3: Merge PR #1**
 
 ```bash
 gh pr merge 1 --merge
@@ -313,7 +313,7 @@ git checkout main && git merge --ff-only feat/read-path && git push origin main
 git checkout feat/read-path
 ```
 
-- [ ] **Step 4: Verify `main` is now the real tool**
+- [x] **Step 4: Verify `main` is now the real tool**
 
 ```bash
 git log --oneline -1 main
@@ -335,13 +335,13 @@ The plists fire at 07:00, 07:15 and 19:15. Nothing is proven until one of those 
 - Consumes: Tasks 1–4 complete
 - Produces: verified confidence that the portability refactor can begin
 
-- [ ] **Step 1: Trigger a run manually rather than waiting**
+- [x] **Step 1: Trigger a run manually rather than waiting**
 
 ```bash
 launchctl kickstart -p gui/$UID/com.aryan.canvas-calendar
 ```
 
-- [ ] **Step 2: Check the exit code and log**
+- [x] **Step 2: Check the exit code and log**
 
 ```bash
 launchctl print gui/$UID/com.aryan.canvas-calendar | grep -E "last exit code|state"
@@ -351,7 +351,7 @@ tail -20 ~/.config/canvas-calendar/launchd.err.log
 
 Expected: last exit code `0`, and a daily.log entry timestamped just now. A code of `2` means the Canvas token expired (run `canvas-calendar token`); `3` means Graph auth failed (run `canvas-calendar login`).
 
-- [ ] **Step 3: Confirm the calendar was not disturbed**
+- [x] **Step 3: Confirm the calendar was not disturbed**
 
 ```bash
 ~/.local/bin/canvas-calendar digest | head -30
@@ -360,7 +360,7 @@ sqlite3 ~/.config/canvas-calendar/state.db "select count(*) from events"
 
 Expected: the state row count matches what it was before this plan began (157 events plus the four MCB 320 quizzes, so 161 tracked rows less any skipped). The digest should show no apply errors.
 
-- [ ] **Step 4: Remove the config backup once satisfied**
+- [x] **Step 4: Remove the config backup once satisfied**
 
 ```bash
 mv ~/.config/canvas-calendar/config.json.pre-isolation /tmp/
