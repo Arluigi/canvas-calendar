@@ -3,11 +3,11 @@
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>com.aryan.canvas-calendar</string>
+    <string>{{LABEL}}</string>
 
     <key>ProgramArguments</key>
     <array>
-        <string>{{HOME}}/code/canvas-calendar/.venv/bin/canvas-calendar</string>
+        <string>{{BINARY}}</string>
         <string>daily</string>
         <string>--live</string>
     </array>
@@ -28,9 +28,6 @@
     <string>{{HOME}}/.config/canvas-calendar/launchd.out.log</string>
     <key>StandardErrorPath</key>
     <string>{{HOME}}/.config/canvas-calendar/launchd.err.log</string>
-
-    <key>WorkingDirectory</key>
-    <string>{{HOME}}/code/canvas-calendar</string>
 
     <key>ProcessType</key>
     <string>Background</string>

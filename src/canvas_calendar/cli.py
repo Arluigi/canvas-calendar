@@ -125,6 +125,10 @@ def main() -> int:
     )
     args = parser.parse_args()
 
+    if args.command == "install-agents":
+        from canvas_calendar.agents import install
+
+        return install()
     if args.command == "setup":
         from canvas_calendar.setup_wizard import main as setup_main
 

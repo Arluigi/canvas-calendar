@@ -3,10 +3,10 @@
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>com.aryan.canvas-debrief</string>
+    <string>{{LABEL}}</string>
     <key>ProgramArguments</key>
     <array>
-        <string>{{HOME}}/code/canvas-calendar/.venv/bin/canvas-calendar</string>
+        <string>{{BINARY}}</string>
         <string>debrief</string>
         <string>--live</string>
     </array>
@@ -16,8 +16,6 @@
     <string>{{HOME}}/.config/canvas-calendar/debrief.out.log</string>
     <key>StandardErrorPath</key>
     <string>{{HOME}}/.config/canvas-calendar/debrief.err.log</string>
-    <key>WorkingDirectory</key>
-    <string>{{HOME}}/code/canvas-calendar</string>
     <key>ProcessType</key>
     <string>Background</string>
 </dict>
