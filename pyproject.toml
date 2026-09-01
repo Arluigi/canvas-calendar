@@ -23,6 +23,8 @@ packages = ["src/canvas_calendar"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = ["live: touches a real calendar; deselected by default"]
+addopts = "-m 'not live'"
 
 [tool.ruff]
 line-length = 100
