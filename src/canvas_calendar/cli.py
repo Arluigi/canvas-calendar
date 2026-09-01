@@ -125,6 +125,10 @@ def main() -> int:
     )
     args = parser.parse_args()
 
+    if args.command == "setup":
+        from canvas_calendar.setup_wizard import main as setup_main
+
+        return setup_main()
     if args.command == "doctor":
         from canvas_calendar.doctor import main as doctor_main
 

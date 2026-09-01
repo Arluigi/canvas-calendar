@@ -21,6 +21,9 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["src/canvas_calendar"]
 
+[tool.hatch.build.targets.wheel.force-include]
+"src/canvas_calendar/data" = "canvas_calendar/data"
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 markers = ["live: touches a real calendar; deselected by default"]
