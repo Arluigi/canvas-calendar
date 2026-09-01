@@ -60,11 +60,24 @@ def diff(
     DELETEs. It MUST be False whenever `assignments` is a filtered subset -- a
     partial fetch is not evidence that the missing events are gone, and pruning
     on one would delete every event belonging to the courses left out.
+
+    A completed assignment is removed regardless of `prune`: completion is
+    positive evidence, whereas absence from a filtered fetch is not.
     """
     plan: list[PlanEntry] = []
     seen: set[str] = set()
 
     for a in assignments:
+        if a.completed:
+            # Positive evidence the work is done, so this deletes even when
+            # prune is off -- unlike absence from a filtered fetch, which is
+            # evidence of nothing. Added to `seen` so the prune pass below
+            # does not emit a second DELETE for the same uid.
+            seen.add(a.uid)
+            action = Action.DELETE if store.get(a.uid) is not None else Action.SKIP
+            plan.append(PlanEntry(action, a.uid, a))
+            continue
+
         if a.due_at is None or a.source is Source.UNRESOLVED or a.digest_only:
             plan.append(PlanEntry(Action.SKIP, a.uid, a))
             continue

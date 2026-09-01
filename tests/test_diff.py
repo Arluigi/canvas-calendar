@@ -5,13 +5,14 @@ from canvas_calendar.models import Assignment, Source
 from canvas_calendar.state import StateStore
 
 
-def _a(cid, name="X", when="2026-08-25T19:00:00Z", source=Source.CANVAS):
+def _a(cid, name="X", when="2026-08-25T19:00:00Z", source=Source.CANVAS, completed=False):
     return Assignment(
         canvas_id=cid,
         name=name,
         points=1.0,
         course="C",
         source=source,
+        completed=completed,
         due_at=datetime.fromisoformat(when) if when else None,
     )
 
@@ -140,3 +141,34 @@ def test_force_rewrites_unchanged_events(tmp_path):
     _commit(diff([_a(1)], s), s)
     assert [p.action for p in diff([_a(1)], s)] == [Action.NOOP]
     assert [p.action for p in diff([_a(1)], s, force=True)] == [Action.UPDATE]
+
+
+def test_completed_with_state_row_is_deleted(tmp_path):
+    store = StateStore(tmp_path / "s.db")
+    _commit(diff([_a(1)], store), store)  # event exists on the calendar
+
+    plan = diff([_a(1, completed=True)], store)  # Canvas now reports it done
+    entries = [p for p in plan if p.uid == "cc-1"]
+    assert len(entries) == 1, "must not emit both a SKIP and a prune DELETE"
+    assert entries[0].action is Action.DELETE
+    assert entries[0].assignment is not None, "digest needs it to name the item"
+
+
+def test_completed_without_state_row_is_skipped(tmp_path):
+    plan = diff([_a(1, completed=True)], StateStore(tmp_path / "s.db"))
+    assert [p.action for p in plan] == [Action.SKIP]
+
+
+def test_completed_deletes_even_when_pruning_is_off(tmp_path):
+    """Completion is positive evidence, unlike absence from a filtered fetch."""
+    store = StateStore(tmp_path / "s.db")
+    _commit(diff([_a(1)], store), store)
+
+    plan = diff([_a(1, completed=True)], store, prune=False)
+    assert [p.action for p in plan] == [Action.DELETE]
+
+
+def test_retracted_submission_restores_the_event(tmp_path):
+    """The event was deleted; Canvas now reports it unsubmitted again."""
+    plan = diff([_a(1, completed=False)], StateStore(tmp_path / "s.db"))
+    assert [p.action for p in plan] == [Action.CREATE]
