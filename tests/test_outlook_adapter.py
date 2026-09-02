@@ -202,3 +202,41 @@ def test_reminder_timings_are_configurable():
         reminder_all_day=120,
     ).upsert("cal-1", "cc-1", _a())
     assert seen["body"]["reminderMinutesBeforeStart"] == 45
+
+
+def _timed(due, **kw):
+    from canvas_calendar.models import Assignment, Source
+    return Assignment(canvas_id=1, name="HW", points=1.0, course="MCB 244",
+                      due_at=due, source=Source.CANVAS, **kw)
+
+
+def test_payload_uses_the_display_window_when_set():
+    """The deadline sits on a lecture; the block must render before it."""
+    from datetime import datetime
+
+    from canvas_calendar.calendars.outlook import OutlookAdapter
+    from canvas_calendar.timeutil import CHICAGO
+
+    a = _timed(
+        datetime(2026, 9, 8, 14, 0, tzinfo=CHICAGO),
+        display_start=datetime(2026, 9, 8, 13, 45, tzinfo=CHICAGO),
+        display_end=datetime(2026, 9, 8, 14, 0, tzinfo=CHICAGO),
+        display_reason="Moved to 1:45 PM so it does not sit on top of MCB 244 Lecture.",
+    )
+    p = OutlookAdapter(auth=None)._payload("cc-1", a)
+    assert p["start"]["dateTime"].endswith("13:45:00")
+    assert p["end"]["dateTime"].endswith("14:00:00")
+    assert "does not sit on top of" in p["body"]["content"]
+
+
+def test_payload_falls_back_to_thirty_minutes_without_a_display_window():
+    from datetime import datetime
+
+    from canvas_calendar.calendars.outlook import OutlookAdapter
+    from canvas_calendar.timeutil import CHICAGO
+
+    p = OutlookAdapter(auth=None)._payload(
+        "cc-1", _timed(datetime(2026, 9, 8, 21, 0, tzinfo=CHICAGO))
+    )
+    assert p["start"]["dateTime"].endswith("21:00:00")
+    assert p["end"]["dateTime"].endswith("21:30:00")

@@ -231,6 +231,8 @@ class EventKitAdapter:
         body = [f"Course: {a.course}", f"Points: {a.points:g}"]
         if a.provenance:
             body.append(f"Date derived from {a.provenance}")
+        if a.display_reason:
+            body.append(a.display_reason)
         body.append("Synced by canvas-calendar. Edits here will be overwritten.")
         ev.setNotes_("\n".join(body))
         ev.setTimeZone_(NSTimeZone.timeZoneWithName_("America/Chicago"))
@@ -246,9 +248,13 @@ class EventKitAdapter:
             ev.setEndDate_(_ns(day + timedelta(days=1)))
             offset = -self._reminder_all_day * 60
         else:
+            # display_start is set when the real due time would sit on top of a
+            # class meeting; due_at itself is untouched.
+            start = a.display_start or local
+            end = a.display_end or (local + timedelta(minutes=30))
             ev.setAllDay_(False)
-            ev.setStartDate_(_ns(local))
-            ev.setEndDate_(_ns(local + timedelta(minutes=30)))
+            ev.setStartDate_(_ns(start))
+            ev.setEndDate_(_ns(end))
             offset = -self._reminder_timed * 60
         ev.addAlarm_(self._ek.EKAlarm.alarmWithRelativeOffset_(offset))
 

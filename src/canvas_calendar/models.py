@@ -68,6 +68,12 @@ class Assignment:
     # calendar. Never filtered out of the fetch: retraction must restore the
     # event, and the digest must be able to count what it removed.
     completed: bool = False
+    # Where the calendar should DRAW this event, when its real due time would
+    # sit on top of a class meeting. `due_at` stays the fact Canvas reported;
+    # only the rectangle moves, and display_reason explains it in the body.
+    display_start: datetime | None = None
+    display_end: datetime | None = None
+    display_reason: str = ""
     # Canvas has several independent ID spaces. Assignments use the default
     # empty namespace; module items (SubHeader-derived events, e.g. MCB 320's
     # exams) use "mi-". Without this, assignment 5440597 and module item

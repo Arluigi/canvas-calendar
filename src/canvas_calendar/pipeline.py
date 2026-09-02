@@ -7,7 +7,11 @@ from datetime import datetime, time
 
 from canvas_calendar.canvas.client import CanvasClient
 from canvas_calendar.completion import is_complete
-from canvas_calendar.config import load_canvas_credentials, load_sync_options
+from canvas_calendar.config import (
+    load_canvas_credentials,
+    load_meeting_windows,
+    load_sync_options,
+)
 from canvas_calendar.models import Assignment, CourseRef, Source
 from canvas_calendar.modules import extract_dates, parse_subheader_date
 from canvas_calendar.overrides import apply_overrides, load_overrides
@@ -175,6 +179,18 @@ def collect(applied: list[str] | None = None) -> list[Assignment]:
 
     results = apply_completion_policy(results, clear_completed=opts["clear_completed"])
 
-    # Canvas is not always authoritative. Applied last so a corrected date
-    # wins over whatever Canvas or module extraction produced.
-    return apply_overrides(results, load_overrides(), applied)
+    # Canvas is not always authoritative. Applied before the overlap pass so a
+    # corrected date is the one checked against the class schedule.
+    results = apply_overrides(results, load_overrides(), applied)
+
+    if opts["avoid_meeting_overlap"]:
+        from canvas_calendar.overlap import apply_meeting_offsets, windows_from_config
+
+        moved = apply_meeting_offsets(
+            results,
+            windows_from_config(load_meeting_windows()),
+            minutes=opts["meeting_offset_minutes"],
+        )
+        if applied is not None and moved:
+            applied.append(f"moved {len(moved)} event(s) clear of a class block")
+    return results

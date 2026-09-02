@@ -85,9 +85,27 @@ def sync_meetings(live: bool = False, calendar_name: str | None = None) -> int:
     from canvas_calendar.config import GRAPH_CONFIG
 
     if GRAPH_CONFIG.exists():
+        from canvas_calendar.meetings import parse_clock
+
         cfg = _json.loads(GRAPH_CONFIG.read_text())
         cfg["instructors"] = sorted({m.meeting.instructor for m in meetings if m.meeting.instructor})
+        # Cached so `sync` can avoid overlapping a deadline with its own class
+        # without re-fetching Course Explorer on every run.
+        windows = []
+        for m in meetings:
+            s, e = parse_clock(m.meeting.start), parse_clock(m.meeting.end)
+            if s is None:
+                continue
+            for wd in m.meeting.weekdays():
+                windows.append({
+                    "weekday": wd,
+                    "start": s.strftime("%H:%M"),
+                    "end": (e or s).strftime("%H:%M"),
+                    "title": m.title,
+                })
+        cfg["meeting_windows"] = windows
         GRAPH_CONFIG.write_text(_json.dumps(cfg, indent=2))
+        print(f"cached {len(windows)} meeting windows for overlap avoidance")
 
     written = sum(1 for m in meetings if adapter.upsert_recurring(cal, m))
     print(f"\nAPPLIED: {written} series written into {calendar_name!r}")

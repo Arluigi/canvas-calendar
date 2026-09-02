@@ -75,6 +75,15 @@ def load_graph_client_id() -> str:
     return DEFAULT_CLIENT_ID
 
 
+def load_meeting_windows() -> list[dict]:
+    """Class blocks cached by `canvas-calendar meetings`. Empty until it runs."""
+    import json
+
+    if GRAPH_CONFIG.exists():
+        return json.loads(GRAPH_CONFIG.read_text()).get("meeting_windows", []) or []
+    return []
+
+
 def load_term():
     """Term bounds from config, falling back to the shipped default."""
     import json
@@ -97,6 +106,8 @@ def load_sync_options() -> dict:
         "debrief_to": "",
         "debrief_hour": 7,
         "clear_completed": True,
+        "avoid_meeting_overlap": True,
+        "meeting_offset_minutes": 15,
         "assignments_calendar": "UIUC Assignments",
         "calendar_backend": None,
     }

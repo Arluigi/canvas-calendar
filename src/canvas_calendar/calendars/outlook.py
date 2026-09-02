@@ -91,6 +91,8 @@ class OutlookAdapter:
         body_lines = [f"Course: {a.course}", f"Points: {a.points:g}"]
         if a.provenance:
             body_lines.append(f"Date derived from {a.provenance}")
+        if a.display_reason:
+            body_lines.append(a.display_reason)
         body_lines.append("Synced by canvas-calendar. Edits here will be overwritten.")
 
         payload: dict = {
@@ -114,13 +116,16 @@ class OutlookAdapter:
                 }
             )
         else:
-            end = local + timedelta(minutes=30)
+            # display_start is set when the real due time would sit on top of a
+            # class meeting; due_at itself is untouched.
+            start = a.display_start or local
+            end = a.display_end or (local + timedelta(minutes=30))
             payload.update(
                 {
                     "isAllDay": False,
                     "reminderMinutesBeforeStart": self._reminder_timed,
                     "start": {
-                        "dateTime": local.strftime("%Y-%m-%dT%H:%M:%S"),
+                        "dateTime": start.strftime("%Y-%m-%dT%H:%M:%S"),
                         "timeZone": WINDOWS_TZ,
                     },
                     "end": {
