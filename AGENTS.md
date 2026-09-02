@@ -47,6 +47,14 @@ uv run pytest -m live              # touches a real calendar; deselected by defa
   score and no `submitted_at` — a gradebook placeholder, not work done.
   `completion.py` requires corroboration, and the digest names everything it
   clears so a false positive is visible before the work is missed.
+- **Deadline events are drawn before their class, not on it.** 43 of 50 timed
+  assignments are due exactly at a class start time. `overlap.py` gives those a
+  15-minute display window ending as the meeting begins; `due_at` is never
+  touched. Shifting only the start would not work — a 30-minute block from 1:45
+  still runs into a 2:00 lecture. The windows are cached by
+  `canvas-calendar meetings`, so after a schedule change re-run
+  `meetings --live` **and then `sync --live --force`** — because `due_at` is
+  unchanged, the diff cannot see a stale offset on its own.
 - **Canvas is not authoritative.** `~/.config/canvas-calendar/overrides.json`
   holds corrections; every one is reported on each run.
 

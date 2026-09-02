@@ -105,6 +105,12 @@ submitted, graded or excused, the event is removed and the digest names what
 it removed — a bare `graded` with no score and no timestamp is a gradebook
 placeholder, not evidence, and is deliberately left alone.
 
+**Deadlines that sit on their own lecture.** Most homework is due at the start
+of class, so the deadline block lands exactly on the class block and both
+collapse to half width. Those events are drawn in the 15 minutes *before* the
+meeting instead, ending as it begins — the real due time is untouched, and the
+event says where it was moved and why.
+
 **Daylight saving.** Timed events carry local wall time plus a zone, so nothing
 drifts across the November change mid-semester.
 
