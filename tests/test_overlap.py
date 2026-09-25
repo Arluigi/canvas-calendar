@@ -118,3 +118,26 @@ def test_windows_from_config_tolerates_absence():
 def test_config_times_parse(hhmm, expected):
     ws = windows_from_config([{"weekday": 0, "start": hhmm, "end": "23:59"}])
     assert ws[0].start == expected
+
+
+def test_time_blocks_are_never_offset():
+    """A 2-hour exam starting when a lecture starts is not a deadline marker
+    to be drawn 15 minutes early; it has its own end."""
+    from datetime import datetime
+
+    from canvas_calendar.models import Assignment
+    from canvas_calendar.overlap import apply_meeting_offsets, windows_from_config
+    from canvas_calendar.timeutil import CHICAGO
+
+    # Wednesday 2026-09-16 is weekday 2.
+    windows = windows_from_config([{"weekday": 2, "start": "19:00", "end": "20:50", "title": "X"}])
+    exam = Assignment(
+        canvas_id="e",
+        name="Exam 1",
+        points=0,
+        course="C",
+        due_at=datetime(2026, 9, 16, 19, 0, tzinfo=CHICAGO),
+        ends_at=datetime(2026, 9, 16, 21, 0, tzinfo=CHICAGO),
+    )
+    assert apply_meeting_offsets([exam], windows) == []
+    assert exam.display_start is None

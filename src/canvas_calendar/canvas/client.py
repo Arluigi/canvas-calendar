@@ -25,7 +25,10 @@ class CanvasClient:
         self._headers = {"Authorization": f"Bearer {token}"}
         self._http = http or httpx.Client(timeout=30)
 
-    def _get_all(self, path: str, **params) -> list[dict]:
+    def _get_all(self, path: str, *, optional: bool = False, **params) -> list[dict]:
+        """`optional` turns a 404 into an empty list. Four of six courses 404
+        on /pages because the tab is disabled -- that is 'nothing here', not a
+        broken run. A 401 still raises regardless."""
         url = f"{self._base}{path}"
         query = {"per_page": 100, **params}
         out: list[dict] = []
@@ -33,6 +36,8 @@ class CanvasClient:
             r = self._http.get(url, headers=self._headers, params=query)
             if r.status_code == 401:
                 raise TokenExpired(r.text)
+            if optional and r.status_code == 404:
+                return out
             r.raise_for_status()
             out.extend(r.json())
             m = _NEXT.search(r.headers.get("Link", ""))
@@ -74,3 +79,24 @@ class CanvasClient:
 
     def list_module_items(self, course_id: int, module_id: int) -> list[dict]:
         return self._get_all(f"/courses/{course_id}/modules/{module_id}/items")
+
+    def _get_one(self, path: str, **params) -> dict | None:
+        r = self._http.get(f"{self._base}{path}", headers=self._headers, params=params)
+        if r.status_code == 401:
+            raise TokenExpired(r.text)
+        if r.status_code == 404:
+            return None
+        r.raise_for_status()
+        return r.json()
+
+    def list_pages(self, course_id: int) -> list[dict]:
+        """Published wiki pages. Empty when the Pages tab is disabled (404)."""
+        return self._get_all(f"/courses/{course_id}/pages", optional=True)
+
+    def get_page(self, course_id: int, url: str) -> dict:
+        """One page with its HTML body; the listing carries no body."""
+        return self._get_one(f"/courses/{course_id}/pages/{url}") or {}
+
+    def get_syllabus_body(self, course_id: int) -> str:
+        data = self._get_one(f"/courses/{course_id}", **{"include[]": "syllabus_body"}) or {}
+        return data.get("syllabus_body") or ""

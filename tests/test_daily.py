@@ -70,7 +70,7 @@ def test_extra_credit_appears_in_digest_not_calendar(tmp_path, monkeypatch):
 def test_manual_corrections_are_reported(tmp_path, monkeypatch):
     out = _digest([], applied=["override Ch19: Nov 06 -> Nov 02"],
                   tmp_path=tmp_path, monkeypatch=monkeypatch)
-    assert "Manual corrections applied" in out
+    assert "Corrections, hand entries and page extractions" in out
     assert "Ch19" in out
 
 

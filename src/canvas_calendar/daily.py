@@ -186,7 +186,7 @@ def write_digest(plan, counts, errors, overrides_applied, token_note: str = "") 
 
     # 2. Corrections we made to Canvas. Never silent.
     if overrides_applied:
-        lines += ["## Manual corrections applied", ""]
+        lines += ["## Corrections, hand entries and page extractions", ""]
         lines += [f"- {line}" for line in overrides_applied] + [""]
 
     # 3. Due in the next 7 days, so the digest stands alone.

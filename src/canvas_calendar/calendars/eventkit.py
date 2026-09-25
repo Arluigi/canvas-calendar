@@ -235,6 +235,8 @@ class EventKitAdapter:
             body.append(a.display_reason)
         body.append("Synced by canvas-calendar. Edits here will be overwritten.")
         ev.setNotes_("\n".join(body))
+        if a.location:
+            ev.setLocation_(a.location)
         ev.setTimeZone_(NSTimeZone.timeZoneWithName_("America/Chicago"))
 
         for alarm in list(ev.alarms() or []):
@@ -251,7 +253,9 @@ class EventKitAdapter:
             # display_start is set when the real due time would sit on top of a
             # class meeting; due_at itself is untouched.
             start = a.display_start or local
-            end = a.display_end or (local + timedelta(minutes=30))
+            end = a.display_end or (to_local(a.ends_at) if a.ends_at else None) or (
+                local + timedelta(minutes=30)
+            )
             ev.setAllDay_(False)
             ev.setStartDate_(_ns(start))
             ev.setEndDate_(_ns(end))

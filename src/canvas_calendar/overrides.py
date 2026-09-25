@@ -9,7 +9,10 @@ also the conservative choice: being early cannot cost points, being late can.
 Two mechanisms:
 
 - `additions`   real work with no Canvas assignment behind it. Gets the "man-"
-                UID namespace so it can never collide with a Canvas id.
+                UID namespace so it can never collide with a Canvas id. May
+                carry `end_local` and `location` for a sitting in a room.
+                If Canvas later publishes the same work, `dedupe.py` retires
+                the addition and says so every run until it is removed.
 - `date_overrides`  a corrected due date for an existing Canvas assignment,
                 keyed by its assignment id.
 
@@ -84,6 +87,8 @@ def apply_overrides(
                 source=Source.EXTRACTED,
                 provenance=spec.get("note", "manual addition"),
                 namespace="man-",
+                ends_at=_parse_local(spec["end_local"]) if spec.get("end_local") else None,
+                location=spec.get("location", "") or "",
             )
         )
         applied.append(f"added {spec['course']} {spec['name']} ({spec['due_local']})")

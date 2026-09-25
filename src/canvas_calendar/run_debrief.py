@@ -7,6 +7,7 @@ teaches you to trust something that is lying.
 
 from __future__ import annotations
 
+import re
 from datetime import datetime
 
 from canvas_calendar.calendars.graph_auth import GraphAuth
@@ -49,6 +50,26 @@ def _recipient_or_blank() -> str:
         return ""
 
 
+_EXTRACTED_TAG = re.compile(r"\s*\[extracted\]$")
+
+
+def mark_done_events(events: list[dict], assignments) -> list[dict]:
+    """Flag today's course events whose work Canvas already reports done.
+
+    The debrief runs at 07:00 and reads the calendar; the sync that removes
+    completed events runs at 07:15. Anything finished overnight is therefore
+    still on the calendar when the email is written. Matching on the subject
+    the adapters write (`COURSE: name`) is enough to strike it through.
+    """
+    done = {f"{a.course}: {a.name}".strip() for a in assignments if a.completed}
+    for e in events:
+        if e.get("kind") != "course":
+            continue
+        if _EXTRACTED_TAG.sub("", e.get("subject", "")).strip() in done:
+            e["done"] = True
+    return events
+
+
 def gather() -> dict:
     now = datetime.now(CHICAGO)
     since = load_last_run()
@@ -79,6 +100,7 @@ def gather() -> dict:
     mail = attempt("email", lambda: outlook_unread(auth), None)
 
     assignments = attempt("canvas assignments", lambda: collect(), [])
+    mark_done_events(events, assignments)
     course_ids = attempt(
         "canvas courses", lambda: [c["id"] for c in term_courses(canvas.list_courses())], []
     )

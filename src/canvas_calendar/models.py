@@ -79,6 +79,12 @@ class Assignment:
     # exams) use "mi-". Without this, assignment 5440597 and module item
     # 5440597 would produce the same UID and clobber each other.
     namespace: str = ""
+    # A real time block rather than a deadline marker: exams, proctored
+    # sittings. When set, the event runs due_at -> ends_at and the meeting-
+    # offset pass leaves it alone (a 2-hour exam is not "drawn before class").
+    ends_at: datetime | None = None
+    # Room, when the source states one. Empty for ordinary deadlines.
+    location: str = ""
 
     @property
     def uid(self) -> str:

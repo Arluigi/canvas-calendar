@@ -114,8 +114,17 @@ event says where it was moved and why.
 **Daylight saving.** Timed events carry local wall time plus a zone, so nothing
 drifts across the November change mid-semester.
 
+**Exams that are not assignments.** Some courses publish their exam schedule
+only on a wiki page or in the syllabus. Every page and syllabus is read, and
+any line that names an assessment ("Exam 1", "Final Exam", "Midterm") and
+states a date becomes an event, with the time range when one is given. Each
+hit is reprinted on every run so a wrong one is visible.
+
 **Canvas being wrong.** `~/.config/canvas-calendar/overrides.json` holds
 corrections and manual additions, and every one is reprinted on every run.
+An addition can carry `end_local` and `location` for an exam in a room. If
+Canvas later publishes the same work, the run says the entry is superseded
+until you remove it, so one exam never becomes two events.
 
 ## Design principle
 

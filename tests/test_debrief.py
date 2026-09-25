@@ -268,3 +268,61 @@ def test_debrief_is_sent_once_per_day(monkeypatch, tmp_path):
     monkeypatch.setattr(rd, "load_last_run", lambda: NOW)
     assert rd.already_sent_today(NOW) is True
     assert rd.already_sent_today(NOW + timedelta(days=1)) is False
+
+
+# --- completed work is checked off, not repeated ---------------------------
+
+
+def test_completed_deadline_is_shown_as_done_not_dropped():
+    """2026-09-08: 'Ch5 Adaptive Quiz: Protein Function' was graded overnight
+    and still headed the Due list as if it were open."""
+    a = _a("Ch5 Adaptive Quiz", hour=9)
+    a.completed = True
+    out = render(_data(due=[a]))
+    assert "Ch5 Adaptive Quiz" in out
+    assert 'class="done"' in out
+
+
+def test_completed_work_does_not_count_as_due_today():
+    a = _a("done", hour=9)
+    a.completed = True
+    s = subject_line(_data(due=[a, _a("open", hour=10)]))
+    assert "1 due today" in s
+
+
+def test_next_week_keeps_completed_items_so_they_can_be_shown_done():
+    a = _a("done", days=1)
+    a.completed = True
+    assert [x.name for x in next_week([a], NOW)] == ["done"]
+
+
+def test_calendar_event_for_completed_work_is_marked_done():
+    """The 7:00 debrief reads the calendar before the 7:15 sync removes what
+    was completed overnight, so the event is still there. Mark it."""
+    ev = {
+        "time": "09:00",
+        "subject": "MCB 354: Ch5 Adaptive Quiz",
+        "all_day": False,
+        "location": "",
+        "organizer": "",
+        "kind": "course",
+        "done": True,
+    }
+    out = render(_data(events=[ev]))
+    assert 'class="done"' in out
+    assert "on your calendar" not in subject_line(_data(events=[ev]))
+
+
+def test_mark_done_events_matches_course_events_by_subject():
+    from canvas_calendar.run_debrief import mark_done_events
+
+    done = _a("Ch5 Adaptive Quiz: Protein Function", course="MCB 354")
+    done.completed = True
+    open_ = _a("Ch6 Adaptive Quiz", course="MCB 354")
+    events = [
+        {"subject": "MCB 354: Ch5 Adaptive Quiz: Protein Function", "kind": "course"},
+        {"subject": "MCB 354: Ch6 Adaptive Quiz", "kind": "course"},
+        {"subject": "MCB 354: Ch5 Adaptive Quiz: Protein Function", "kind": "personal"},
+    ]
+    mark_done_events(events, [done, open_])
+    assert [e.get("done", False) for e in events] == [True, False, False]

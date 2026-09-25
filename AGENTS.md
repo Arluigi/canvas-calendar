@@ -56,7 +56,24 @@ uv run pytest -m live              # touches a real calendar; deselected by defa
   `meetings --live` **and then `sync --live --force`** — because `due_at` is
   unchanged, the diff cannot see a stale offset on its own.
 - **Canvas is not authoritative.** `~/.config/canvas-calendar/overrides.json`
-  holds corrections; every one is reported on each run.
+  holds corrections; every one is reported on each run. Additions may carry
+  `end_local` and `location` (exams). Those fields are outside the diff key,
+  so adding them to an entry that already exists needs `sync --live --force`.
+- **Exams hide on wiki pages and in syllabus bodies.** MCB 354's four exams
+  exist only on a page called "Exam Information"; MCB 244 and MCB 364 state
+  their finals in syllabus prose. `pages.py` reads every page and the syllabus
+  of every course, takes only lines that *name* an assessment and *state* a
+  date, and reports each hit every run. Four of six courses 404 on `/pages`
+  (tab disabled) — that is empty, not an error.
+- **Hand entries go stale.** Canvas published "Ch5 Adaptive Quiz: Protein
+  Function" a week after it was hand-entered; both were calendared and the
+  hand copy outlived the Canvas one's completion. `dedupe.py` retires the
+  lower source when names match at a separator boundary (Canvas assignment >
+  overrides entry > SubHeader > page) and prints a "remove it from
+  overrides.json" line until you do. Same-tier items are never merged.
+- **`uv tool install --force .` can reuse the cached wheel** when the version
+  number is unchanged, leaving the scheduled copy stale while claiming
+  success. Use `--force --reinstall .` and diff site-packages against `src/`.
 
 ## Scheduled
 
@@ -68,8 +85,8 @@ uv run pytest -m live              # touches a real calendar; deselected by defa
 
 Both run `~/.local/bin/canvas-calendar`, NOT the repo `.venv` — the branch
 checked out must never decide what runs at 07:15. After changing code, run
-`uv tool install --force .` to upgrade the scheduled copy; until then the
-schedule keeps running the previously installed build.
+`uv tool install --force --reinstall .` to upgrade the scheduled copy; until
+then the schedule keeps running the previously installed build.
 
 These use the legacy `com.aryan.*` labels. `install-agents` writes
 `io.github.canvas-calendar.*`, so running it here would schedule everything
@@ -96,26 +113,26 @@ change could make *invisible*, not just what it adds.
 
 ## Session Log
 
-### 2026-09-01
-- Completed: Made the project shareable. Machine isolation (LaunchAgents now
-  run `~/.local/bin/canvas-calendar`, not the git working tree; `main` merged
-  forward from 30 commits behind). Completion tracking — assignments leave the
-  calendar once Canvas reports them submitted/graded/excused, with the digest
-  naming what it cleared. EventKit adapter so iCloud, Google and Exchange all
-  work with no OAuth of our own; adapter factory; pure `terms.py`; portable
-  Canvas credentials. Onboarding: `doctor`, `setup`, `install-agents`,
-  `AGENTS.md` as the single agent instruction file (CLAUDE.md and GEMINI.md
-  symlink to it), `install.sh`, README. Repo made public and the install
-  verified end to end from the public git URL.
-  335 tests + 4 live, ruff clean, 66 commits.
-- Also completed: deadline events no longer sit on top of their own class
-  (43 of 50 collided); scheduled copy upgraded to the merged code and verified
-  by a real kickstart. Nothing outstanding from the spec. Open ideas: `canvas-calendar done
-  <uid>` so the MCB 320 quizzes and SubHeader exams (no Canvas submission, so
-  they can never auto-clear) can be marked done by hand; a portable debrief
-  email (today needs Graph Mail.Send, so Outlook-only). Watch the first friend
-  through the Google path — creating the calendar by hand is the one rough
-  edge. **Canvas token expires 2026-09-24.**
+### 2026-09-08
+- Completed: three problems from the Sep 8 debrief. (1) Duplicates: the
+  hand-entered Ch3/Ch5 quizzes had since appeared in Canvas, so both copies
+  were calendared and the hand copy outlived the Canvas one's completion —
+  added `dedupe.py` (Canvas > overrides entry > SubHeader > page, reported
+  every run) and retired the two entries. (2) Completed work still listed as
+  due in the email — the debrief now strikes it through and stops counting
+  it, and marks calendar events for overnight completions the 07:15 sync has
+  not yet removed. (3) MCB 354's exams were only on an "Exam Information"
+  wiki page — added `pages.py`, which reads every page and syllabus body for
+  named, dated assessments; it found MCB 354's four exams plus the MCB 244
+  and MCB 364 finals. Assignments gained `ends_at` and `location`; the MCB 354
+  Exam 1 (3039 CIF) and MCB 244 CBTF Exam 1 reservation are overrides
+  additions. Scheduled copy upgraded (needed `--reinstall`: plain `--force`
+  reused the cached wheel) and verified by kickstart. 392 tests, ruff clean.
+  Working tree left uncommitted for review.
+- Next: add rooms for MCB 354 Exams 2/3/Final and the MCB 244 Exam 2/3 CBTF
+  reservations as additions when posted. Open ideas: `canvas-calendar done
+  <uid>`; resolve the user's section (ADI) so room tables need no hand entry.
+  **Canvas token expires 2026-09-24.**
 
 ## Installing for a new user
 

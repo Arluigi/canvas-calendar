@@ -61,6 +61,29 @@ def extract_dates(text: str, year: int) -> list[date]:
     return out
 
 
+def find_dates(text: str, year: int) -> list[tuple[int, int, date]]:
+    """Every date in `text` with its span, in order of position.
+
+    Unlike `extract_dates` this does not prefer one notation over the other:
+    a page or syllabus mixes 'September 16, 2026' and '12/15' freely, and the
+    caller pairs each date with the assessment name nearest before it.
+    """
+    found: list[tuple[int, int, date]] = []
+    for m in _SLASH.finditer(text):
+        month, day = int(m.group(1)), int(m.group(2))
+        try:
+            found.append((m.start(), m.end(), date(year, month, day)))
+        except ValueError:
+            continue
+    for m in _NAMED.finditer(text):
+        month = _MONTHS[m.group(1).lower()]
+        try:
+            found.append((m.start(), m.end(), date(year, month, int(m.group(2)))))
+        except ValueError:
+            continue
+    return sorted(found)
+
+
 def parse_subheader_date(text: str, year: int) -> date | None:
     """First date in a SubHeader, or None. Ranges take the start date."""
     found = extract_dates(text, year)

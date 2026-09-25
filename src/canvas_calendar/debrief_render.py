@@ -33,6 +33,8 @@ td.course{width:74px;font-weight:600;white-space:nowrap;padding-right:10px}
 .urgent{color:#b3261e;font-weight:600}
 .soon{color:#8a5a00}\n
 .empty{color:#888;font-style:italic}
+tr.done td{color:#9a9a9a;text-decoration:line-through}
+tr.done td.when{text-decoration:none}
 .gap{background:#fbf7e8;border-left:3px solid #d9b45b;padding:9px 12px;margin:8px 0;
      font-size:13px}
 .err{background:#fdeaea;border-left:3px solid #b3261e;padding:9px 12px;margin:8px 0;
@@ -99,8 +101,13 @@ def render(data: dict) -> str:
         for e in timed:
             loc = e.get("location") or ""
             meta = f' <span class="meta">· {_e(loc)}</span>' if loc else ""
+            # Work Canvas already reports done is still on the calendar until
+            # the next sync removes it. Strike it through rather than list it
+            # as if it were still owed.
+            row = '<tr class="done">' if e.get("done") else "<tr>"
+            when = "✓ done" if e.get("done") else _clock(e["time"])
             p.append(
-                f'<tr><td class="when">{_e(_clock(e["time"]))}</td>'
+                f'{row}<td class="when">{_e(when)}</td>'
                 f'<td><span class="tag">{_e(e["subject"])}</span>{meta}</td></tr>'
             )
         p.append("</table>")
@@ -117,8 +124,10 @@ def render(data: dict) -> str:
             label, cls = day
             p.append(f'<div class="day {cls}">{_e(label)}</div><table>')
             for a in items:
+                row = '<tr class="done">' if a.completed else "<tr>"
+                when = "✓ done" if a.completed else _deadline(a)
                 p.append(
-                    f'<tr><td class="when">{_e(_deadline(a))}</td>'
+                    f'{row}<td class="when">{_e(when)}</td>'
                     f'<td class="course">{_e(a.course)}</td>'
                     f"<td>{_e(a.name[:74])}</td></tr>"
                 )
@@ -201,9 +210,9 @@ def subject_line(data: dict) -> str:
     due_today = sum(
         1
         for a in data.get("due", [])
-        if a.due_at and to_local(a.due_at).date() == now.date()
+        if a.due_at and not a.completed and to_local(a.due_at).date() == now.date()
     )
-    events = [e for e in data.get("events", []) if not e["all_day"]]
+    events = [e for e in data.get("events", []) if not e["all_day"] and not e.get("done")]
     bits = []
     if due_today:
         bits.append(f"{due_today} due today")
@@ -217,6 +226,9 @@ def subject_line(data: dict) -> str:
 
 
 def next_week(assignments, now: datetime):
+    """Completed items are kept: the renderer strikes them through, which is
+    how the reader learns a deadline is handled rather than wondering why it
+    vanished."""
     horizon = now + timedelta(days=7)
     return sorted(
         (

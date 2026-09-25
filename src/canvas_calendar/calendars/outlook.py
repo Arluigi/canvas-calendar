@@ -101,6 +101,8 @@ class OutlookAdapter:
             "singleValueExtendedProperties": [{"id": UID_PROP, "value": uid}],
             "isReminderOn": True,
         }
+        if a.location:
+            payload["location"] = {"displayName": a.location}
 
         if is_end_of_day(a.due_at):
             day = local.date()
@@ -119,7 +121,9 @@ class OutlookAdapter:
             # display_start is set when the real due time would sit on top of a
             # class meeting; due_at itself is untouched.
             start = a.display_start or local
-            end = a.display_end or (local + timedelta(minutes=30))
+            end = a.display_end or (to_local(a.ends_at) if a.ends_at else None) or (
+                local + timedelta(minutes=30)
+            )
             payload.update(
                 {
                     "isAllDay": False,

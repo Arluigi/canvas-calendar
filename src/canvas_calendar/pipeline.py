@@ -12,9 +12,11 @@ from canvas_calendar.config import (
     load_meeting_windows,
     load_sync_options,
 )
+from canvas_calendar.dedupe import dedupe
 from canvas_calendar.models import Assignment, CourseRef, Source
 from canvas_calendar.modules import extract_dates, parse_subheader_date
 from canvas_calendar.overrides import apply_overrides, load_overrides
+from canvas_calendar.pages import course_page_events
 from canvas_calendar.rules import Disposition, classify
 from canvas_calendar.timeutil import CHICAGO, parse_canvas_ts
 
@@ -161,6 +163,7 @@ def collect(applied: list[str] | None = None) -> list[Assignment]:
     opts = load_sync_options()
     exclude = set(opts["exclude_assignment_ids"])
     results: list[Assignment] = []
+    notes: list[str] = applied if applied is not None else []
 
     for course in term_courses(client.list_courses()):
         cid = course["id"]
@@ -168,7 +171,11 @@ def collect(applied: list[str] | None = None) -> list[Assignment]:
         items = build_assignments(client.list_assignments(cid), course=label)
 
         titles, events = _walk_modules(client, cid, label)
-        items = resolve_undated(items, titles, TERM_YEAR) + events
+        # Pages and the syllabus are where MCB 354 keeps its exams. Read for
+        # every course: the cost is a few GETs, the alternative is an exam
+        # that never appears anywhere.
+        pages = course_page_events(client, cid, label, TERM_YEAR, notes)
+        items = resolve_undated(items, titles, TERM_YEAR) + events + pages
 
         for a in items:
             verdict = classify(a, exclude=exclude)
@@ -182,6 +189,10 @@ def collect(applied: list[str] | None = None) -> list[Assignment]:
     # Canvas is not always authoritative. Applied before the overlap pass so a
     # corrected date is the one checked against the class schedule.
     results = apply_overrides(results, load_overrides(), applied)
+
+    # Four sources can now describe one exam. Canvas wins over a hand entry,
+    # which wins over extraction; every retirement is reported.
+    results = dedupe(results, notes)
 
     if opts["avoid_meeting_overlap"]:
         from canvas_calendar.overlap import apply_meeting_offsets, windows_from_config

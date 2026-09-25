@@ -71,3 +71,35 @@ def test_no_overrides_changes_nothing():
     before = items[0].due_at
     apply_overrides(items, {"additions": [], "date_overrides": {}})
     assert items[0].due_at == before and len(items) == 1
+
+
+def test_addition_can_carry_an_end_time_and_a_room():
+    """An exam is a two-hour block in a named room, not a 30-minute deadline."""
+    items: list[Assignment] = []
+    apply_overrides(
+        items,
+        {
+            "additions": [
+                {
+                    "id": "mcb354-exam1",
+                    "course": "MCB 354",
+                    "name": "Exam 1",
+                    "due_local": "2026-09-16T19:00",
+                    "end_local": "2026-09-16T21:00",
+                    "location": "3039 CIF",
+                }
+            ]
+        },
+    )
+    a = items[0]
+    assert a.ends_at == datetime(2026, 9, 16, 21, 0, tzinfo=CHICAGO)
+    assert a.location == "3039 CIF"
+
+
+def test_addition_without_end_or_room_is_unchanged():
+    items: list[Assignment] = []
+    apply_overrides(
+        items,
+        {"additions": [{"id": "x", "course": "C", "name": "N", "due_local": "2026-08-31T09:00"}]},
+    )
+    assert items[0].ends_at is None and items[0].location == ""

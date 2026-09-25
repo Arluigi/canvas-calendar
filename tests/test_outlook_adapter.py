@@ -240,3 +240,20 @@ def test_payload_falls_back_to_thirty_minutes_without_a_display_window():
     )
     assert p["start"]["dateTime"].endswith("21:00:00")
     assert p["end"]["dateTime"].endswith("21:30:00")
+
+
+def test_payload_carries_room_and_explicit_end_time():
+    """An exam is a block in a room, not a 30-minute marker."""
+    a = _a("Exam 1", when="2026-09-17T00:00:00Z")  # 7 PM CDT
+    a.ends_at = datetime.fromisoformat("2026-09-17T02:00:00Z")
+    a.location = "3039 CIF"
+    p = _adapter(lambda r: httpx.Response(200))._payload("cc-x", a)
+    assert p["location"] == {"displayName": "3039 CIF"}
+    assert p["start"]["dateTime"] == "2026-09-16T19:00:00"
+    assert p["end"]["dateTime"] == "2026-09-16T21:00:00"
+
+
+def test_payload_without_room_has_no_location_key():
+    p = _adapter(lambda r: httpx.Response(200))._payload("cc-x", _a())
+    assert "location" not in p
+    assert p["end"]["dateTime"] == "2026-08-25T14:30:00"

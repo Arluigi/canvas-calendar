@@ -70,6 +70,10 @@ def apply_meeting_offsets(
     for a in items:
         if a.due_at is None or is_end_of_day(a.due_at) or a.digest_only:
             continue
+        if a.ends_at is not None:
+            # An exam is a block with its own end; it never hides behind a
+            # 15-minute marker in front of a lecture.
+            continue
         local = to_local(a.due_at)
         for w in windows:
             if not w.contains(local):
