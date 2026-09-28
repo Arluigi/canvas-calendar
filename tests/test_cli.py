@@ -70,3 +70,27 @@ def test_sorts_by_due_date_with_unresolved_last():
     lines = render_preview(items).splitlines()
     assert "Earlier" in lines[0]
     assert "Later" in lines[-1]
+
+
+def test_token_command_prints_renewal_steps_when_token_is_dead(monkeypatch, capsys):
+    """The one moment you run `token` is when the token has died -- a 401
+    must print the renewal steps, not a traceback."""
+    import sys
+
+    from canvas_calendar import cli
+    from canvas_calendar.canvas import client as canvas_client
+
+    def reject(self):
+        raise canvas_client.TokenExpired('{"errors":[{"message":"Expired access token."}]}')
+
+    monkeypatch.setattr(canvas_client.CanvasClient, "list_tokens", reject)
+    monkeypatch.setattr(
+        "canvas_calendar.config.load_canvas_credentials",
+        lambda: ("https://canvas.example/api/v1", "dead"),
+    )
+    monkeypatch.setattr(sys, "argv", ["canvas-calendar", "token"])
+
+    assert cli.main() == 2
+    out = capsys.readouterr().out
+    assert "expired" in out.lower()
+    assert cli.RENEWAL_STEPS.strip() in out

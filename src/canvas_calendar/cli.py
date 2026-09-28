@@ -153,13 +153,20 @@ def main() -> int:
     if args.command == "token":
         from datetime import datetime
 
-        from canvas_calendar.canvas.client import CanvasClient
+        from canvas_calendar.canvas.client import CanvasClient, TokenExpired
         from canvas_calendar.config import load_canvas_credentials
         from canvas_calendar.daily import token_expiry_status
         from canvas_calendar.timeutil import CHICAGO
 
         b, t = load_canvas_credentials()
-        days, msg = token_expiry_status(CanvasClient(b, t).list_tokens(), datetime.now(CHICAGO))
+        try:
+            tokens = CanvasClient(b, t).list_tokens()
+        except TokenExpired:
+            # A dead token is the usual reason to run this command at all.
+            print("Canvas token expired or rejected (401).")
+            print(RENEWAL_STEPS)
+            return 2
+        days, msg = token_expiry_status(tokens, datetime.now(CHICAGO))
         print(msg)
         if days is not None and days <= 14:
             print(RENEWAL_STEPS)
