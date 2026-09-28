@@ -65,6 +65,14 @@ uv run pytest -m live              # touches a real calendar; deselected by defa
   of every course, takes only lines that *name* an assessment and *state* a
   date, and reports each hit every run. Four of six courses 404 on `/pages`
   (tab disabled) — that is empty, not an error.
+- **MCB 364's quizzes live in Moodle, not Canvas.** They are LTI links to
+  `lti.learn.illinois.edu` with every Canvas date null, and the course is
+  invisible at learn.illinois.edu directly. `moodle.py` runs Canvas's
+  sessionless launch through the LTI handshake to `/mod/quiz/view.php` and
+  reads `Closes:` and `Status Finished`. It may only POST the two handshake
+  forms — the quiz page holds the Attempt-quiz form. A failed read falls back
+  to `moodle_cache.json`; reverting to undated would let the prune delete the
+  event. Module-title dates for these were 2½ days late (Fri 23:59 vs Wed 10:15).
 - **Hand entries go stale.** Canvas published "Ch5 Adaptive Quiz: Protein
   Function" a week after it was hand-entered; both were calendared and the
   hand copy outlived the Canvas one's completion. `dedupe.py` retires the

@@ -16,6 +16,7 @@ _DAY_CODES = {"M": 0, "T": 1, "W": 2, "R": 3, "F": 4, "S": 5, "U": 6}
 class Source(str, Enum):
     CANVAS = "canvas"  # instructor-set due date
     EXTRACTED = "extracted"  # parsed from module title / SubHeader text
+    MOODLE = "moodle"  # read from the Learn@Illinois quiz page via LTI launch
     UNRESOLVED = "unresolved"  # no date available; digest only
 
 

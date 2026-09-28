@@ -74,6 +74,25 @@ class CanvasClient:
         r.raise_for_status()
         return r.json()
 
+    def sessionless_launch(self, course_id: int, assignment_id: int, tool_id: int) -> str:
+        """One-time URL that launches an external-tool assignment as the user.
+
+        `id` (the tool) is required even with `assignment_id`: without it
+        Illinois answers 200 with "Unable to find a matching external tool".
+        """
+        r = self._http.get(
+            f"{self._base}/courses/{course_id}/external_tools/sessionless_launch",
+            headers=self._headers,
+            params={"launch_type": "assessment", "assignment_id": assignment_id, "id": tool_id},
+        )
+        if r.status_code == 401:
+            raise TokenExpired(r.text)
+        r.raise_for_status()
+        url = r.json().get("url")
+        if not url:
+            raise RuntimeError(f"no launch url: {r.text[:200]}")
+        return url
+
     def list_modules(self, course_id: int) -> list[dict]:
         return self._get_all(f"/courses/{course_id}/modules")
 

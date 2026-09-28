@@ -15,6 +15,7 @@ from canvas_calendar.config import (
 from canvas_calendar.dedupe import dedupe
 from canvas_calendar.models import Assignment, CourseRef, Source
 from canvas_calendar.modules import extract_dates, parse_subheader_date
+from canvas_calendar.moodle import MoodleCache, MoodleReader, resolve_moodle
 from canvas_calendar.overrides import apply_overrides, load_overrides
 from canvas_calendar.pages import course_page_events
 from canvas_calendar.rules import Disposition, classify
@@ -165,10 +166,17 @@ def collect(applied: list[str] | None = None) -> list[Assignment]:
     results: list[Assignment] = []
     notes: list[str] = applied if applied is not None else []
 
+    moodle = MoodleReader(client)
+    moodle_cache = MoodleCache()
+
     for course in term_courses(client.list_courses()):
         cid = course["id"]
         label = course.get("name", "") or course.get("course_code", "")
-        items = build_assignments(client.list_assignments(cid), course=label)
+        raw = client.list_assignments(cid)
+        items = build_assignments(raw, course=label)
+        # Before module extraction: an exact Moodle close time outranks a date
+        # guessed from a module heading.
+        items = resolve_moodle(items, raw, cid, moodle, moodle_cache, notes)
 
         titles, events = _walk_modules(client, cid, label)
         # Pages and the syllabus are where MCB 354 keeps its exams. Read for
@@ -183,6 +191,11 @@ def collect(applied: list[str] | None = None) -> list[Assignment]:
                 continue
             a.digest_only = verdict is Disposition.DIGEST
             results.append(a)
+
+    moodle_cache.save()
+    read = sum(1 for a in results if a.source is Source.MOODLE)
+    if read:
+        notes.append(f"{read} date(s) from Moodle quiz pages")
 
     results = apply_completion_policy(results, clear_completed=opts["clear_completed"])
 
