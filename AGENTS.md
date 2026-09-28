@@ -132,7 +132,7 @@ change could make *invisible*, not just what it adds.
 - Next: add rooms for MCB 354 Exams 2/3/Final and the MCB 244 Exam 2/3 CBTF
   reservations as additions when posted. Open ideas: `canvas-calendar done
   <uid>`; resolve the user's section (ADI) so room tables need no hand entry.
-  **Canvas token expires 2026-09-24.**
+  **Canvas token expires 2026-10-28.**
 
 ## Installing for a new user
 
